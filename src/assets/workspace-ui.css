@@ -1,0 +1,71 @@
+/* Shared workspace UI rules, used by the workspace view and its section components. */
+.eyebrow { margin: 0 0 7px; color: #527360; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.section-tabs, .kind-tabs { display: flex; gap: 8px; border-bottom: 1px solid #e1e8e1; }
+.section-tabs button, .kind-tabs button { padding: 12px 14px; border: 0; border-bottom: 2px solid transparent; color: #748077; background: transparent; cursor: pointer; font: inherit; font-size: 13px; font-weight: 650; }
+.section-tabs button.active, .kind-tabs button.active { border-bottom-color: #245c45; color: #245c45; }
+.panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.panel-heading h2 { margin: 0; color: #20382b; font-size: 22px; }
+.panel-heading .eyebrow { margin-bottom: 4px; }
+.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+.summary-card { display: grid; min-width: 0; gap: 8px; padding: 16px; border: 1px solid #e4ebe4; border-radius: 12px; background: #fbfdfb; }
+.summary-card > span { color: #637168; font-size: 12px; font-weight: 650; }
+.summary-card strong { overflow: hidden; color: #20382b; font-size: 19px; letter-spacing: -.02em; text-overflow: ellipsis; }
+.summary-card small { color: #77837b; font-size: 10px; line-height: 1.5; }
+.report-filters { display: grid; grid-template-columns: minmax(170px, 1.3fr) repeat(2, minmax(130px, 1fr)) auto; align-items: end; gap: 10px; margin-top: 20px; }
+.report-filters label { display: grid; gap: 5px; color: #45594c; font-size: 11px; font-weight: 650; }
+.report-filters input, .report-filters select { width: 100%; min-width: 0; min-height: 40px; padding: 7px 9px; border: 1px solid #d8e1d9; border-radius: 8px; color: #27392f; background: #fff; font: inherit; }
+.report-table-wrap { margin-top: 20px; overflow-x: auto; }
+.report-table { width: 100%; border-collapse: collapse; font-size: 12px; text-align: left; }
+.report-table th, .report-table td { padding: 11px 10px; border-bottom: 1px solid #edf1ed; white-space: nowrap; }
+.report-table thead th, .report-table tfoot th { color: #45594c; background: #f7faf7; font-weight: 700; }
+.report-table td:nth-last-child(-n+2), .report-table th:nth-last-child(-n+2) { text-align: right; }
+.primary-button { min-height: 40px; padding: 0 15px; border: 0; border-radius: 9px; color: #fff; background: #245c45; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; }
+.primary-button:disabled { cursor: not-allowed; opacity: .55; }
+.kind-tabs { margin-top: 20px; }
+.entry-form { margin-top: 20px; padding: 20px; border: 1px solid #dfe9df; border-radius: 13px; background: #f9fbf9; }
+.entry-form h3 { margin: 0; color: #20382b; font-size: 17px; }
+.form-note { margin: 7px 0 18px; color: #6e7c72; font-size: 12px; line-height: 1.5; }
+.fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+.fields-grid label, .line-row label, .notes-field { display: grid; gap: 6px; color: #45594c; font-size: 12px; font-weight: 650; }
+.fields-grid input, .fields-grid select, .fields-grid textarea, .line-row input, .line-row select, .notes-field textarea { min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid #d8e1d9; border-radius: 8px; color: #27392f; background: #fff; font: inherit; font-weight: 400; }
+.status-chip.stock-low { color: #8c443a; background: #fbefed; }
+.text-button { padding: 5px; border: 0; color: #245c45; background: transparent; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
+.form-footer { display: flex; justify-content: flex-end; margin-top: 16px; }
+.error-text { color: #9b352b; font-size: 12px; }
+.invoice-list, .contact-list { display: grid; }
+.invoice-row, .contact-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 18px; padding: 15px 0; border-bottom: 1px solid #edf1ed; }
+.invoice-main, .contact-row > div { display: grid; gap: 4px; min-width: 0; }
+.invoice-main strong, .contact-row strong { overflow: hidden; color: #2a4033; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.invoice-main span, .contact-row span:not(.status-chip) { overflow: hidden; color: #77837b; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.status-chip { padding: 5px 8px; border-radius: 999px; color: #42644f; background: #edf5ef; font-size: 10px; font-weight: 700; text-transform: capitalize; }
+.status-chip.posted { color: #334b73; background: #edf1f8; }
+.contact-actions { display: flex; gap: 8px; }
+.audit-list { display: grid; grid-column: 1 / -1; gap: 8px; margin: 4px 0 0; padding: 10px 12px; border-radius: 8px; background: #f6f8f6; list-style: none; font-size: 12px; }
+.audit-list li span { display: block; color: #4d5f55; }
+.report-actions { display: flex; gap: 12px; }
+.contact-card { margin: 4px 0 22px; padding: 16px; border: 1px solid #dfe7e0; border-radius: 10px; background: #fbfcfb; }
+.contact-card-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.contact-card-heading h3 { margin: 2px 0; }
+.statement-total td { font-weight: 700; }
+.severity-chip { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
+.severity-chip.critical { color: #9b352b; background: #f8dedb; }
+.severity-chip.warning { color: #8a5a12; background: #f8ebcf; }
+.severity-chip.ok { color: #2f5a41; background: #e2efe6; }
+.severity-chip.info { color: #4d5f55; background: #eceff0; }
+.print-only { display: none; }
+.status-chip.cancelled { color: #8a4b2a; background: #fbeee6; }
+.contact-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+.contact-row > .contact-actions { display: flex; gap: 8px; }
+.contact-row .audit-list span { white-space: normal; }
+.empty-message, .notice { padding: 18px 0; color: #77837b; font-size: 13px; }
+.ledger-actions .form-note { margin: 0; }
+.setup-hint { margin: 14px 0; color: #77837b; font-size: 12px; }
+.bank-import-form .form-note { grid-column: 1 / -1; margin: 0; }
+.bank-import-form .primary-button { grid-column: 2; grid-row: 1; }
+.bank-match-actions .form-note { align-self: center; margin: 0; }
+.payment-source-document .form-note { grid-column: 1 / -1; margin: 0; }
+@media print {
+  .print-only { display: grid; gap: 2px; margin-bottom: 14px; font-size: 12px; }
+  .report-print-heading strong { font-size: 16px; }
+  .no-print, .report-filters, .report-actions, .entry-form { display: none !important; }
+}
