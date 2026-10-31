@@ -7,6 +7,7 @@ import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
 import AtkFilingsPanel from '@/components/workspace/AtkFilingsPanel.vue'
+import { downloadFromApi } from '@/lib/download'
 import NotificationBell from '@/components/workspace/NotificationBell.vue'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
 import TasksPanel from '@/components/workspace/TasksPanel.vue'
@@ -688,6 +689,21 @@ async function loadDashboardSummary(): Promise<void> {
     dashboardError.value = getApiError(error, 'We could not load the financial overview.')
   } finally {
     dashboardLoading.value = false
+  }
+}
+
+const reportDownloading = ref('')
+
+async function downloadFinancialReport(format: 'xlsx' | 'pdf'): Promise<void> {
+  reportDownloading.value = format
+  reportError.value = ''
+
+  try {
+    await downloadFromApi(`/api/v1/businesses/${businessId}/reports/financial/export`, { type: reportType.value, from: reportFrom.value, to: reportTo.value, format }, `${reportType.value}.${format}`)
+  } catch (error: unknown) {
+    reportError.value = getApiError(error, 'We could not export this report.')
+  } finally {
+    reportDownloading.value = ''
   }
 }
 
@@ -1846,14 +1862,7 @@ async function downloadPayrollWmList(run: PayrollRun): Promise<void> {
       return
     }
 
-    const response = await api.get<Blob>(`/api/v1/businesses/${businessId}/payroll-runs/${run.id}/atk-wm`, { params: { download: 1 }, responseType: 'blob' })
-    const filename = /filename="([^"]+)"/.exec(String(response.headers['content-disposition'] ?? ''))?.[1] ?? `Lista-e-pagave-WM-${run.period_year}-${String(run.period_month).padStart(2, '0')}.xlsx`
-    const downloadUrl = URL.createObjectURL(response.data)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = filename
-    link.click()
-    URL.revokeObjectURL(downloadUrl)
+    await downloadFromApi(`/api/v1/businesses/${businessId}/payroll-runs/${run.id}/atk-wm`, { download: 1 }, `Lista-e-pagave-WM-${run.period_year}-${String(run.period_month).padStart(2, '0')}.xlsx`)
   } catch (error: unknown) {
     formError.value = getApiError(error, 'We could not export the WM wage list.')
   } finally {
@@ -1968,6 +1977,8 @@ function getApiError(error: unknown, fallback: string): string {
           <div v-if="reportsView === 'statements'" class="report-actions">
             <button class="text-button" type="button" :disabled="!financialReport" @click="printFinancialReport">Print / PDF</button>
             <button class="text-button" type="button" :disabled="!financialReport" @click="exportFinancialReport">Export CSV</button>
+            <button class="text-button" type="button" :disabled="!financialReport || reportDownloading !== ''" @click="downloadFinancialReport('xlsx')">{{ reportDownloading === 'xlsx' ? 'Exporting…' : 'Excel' }}</button>
+            <button class="text-button" type="button" :disabled="!financialReport || reportDownloading !== ''" @click="downloadFinancialReport('pdf')">{{ reportDownloading === 'pdf' ? 'Exporting…' : 'PDF file' }}</button>
           </div>
         </div>
         <nav class="kind-tabs no-print" aria-label="Report groups">

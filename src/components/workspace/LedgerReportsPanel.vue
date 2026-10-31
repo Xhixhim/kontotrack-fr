@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import api from '@/lib/api'
+import { downloadFromApi } from '@/lib/download'
 import { downloadCsv, formatDate, formatMoney, getApiError, todayIsoDate } from '@/lib/format'
 
 interface CardLine { date: string; journal_entry_id: number; reference: string | null; description: string; counterparty_name: string | null; debit: string; credit: string; balance: string }
@@ -55,6 +56,24 @@ async function generate(): Promise<void> {
   }
 }
 
+const downloading = ref('')
+
+async function download(format: 'xlsx' | 'pdf'): Promise<void> {
+  downloading.value = format
+  error.value = ''
+
+  try {
+    const params: Record<string, string> = { type: reportType.value, from: from.value, to: to.value, format }
+    if (reportType.value === 'general_ledger' && accountId.value) params.account_id = accountId.value
+    if (reportType.value === 'cash_book') params.cash_account_id = cashAccountId.value
+    await downloadFromApi(`/api/v1/businesses/${props.businessId}/reports/financial/export`, params, `${reportType.value}.${format}`)
+  } catch (caught: unknown) {
+    error.value = getApiError(caught, 'We could not export this report.')
+  } finally {
+    downloading.value = ''
+  }
+}
+
 function printReport(): void {
   window.print()
 }
@@ -92,6 +111,8 @@ function exportCsv(): void {
     <div v-if="cards || cashBook" class="report-actions ledger-report-actions">
       <button class="text-button" type="button" @click="printReport">Print / PDF</button>
       <button class="text-button" type="button" @click="exportCsv">Export CSV</button>
+      <button class="text-button" type="button" :disabled="downloading !== ''" @click="download('xlsx')">{{ downloading === 'xlsx' ? 'Exporting…' : 'Excel' }}</button>
+      <button class="text-button" type="button" :disabled="downloading !== ''" @click="download('pdf')">{{ downloading === 'pdf' ? 'Exporting…' : 'PDF file' }}</button>
     </div>
     <div v-if="cards || cashBook" class="print-only report-print-heading"><strong>{{ cards ? 'Account cards' : `Cash book · ${cashBook?.cash_account.name}` }}</strong><span>{{ businessName }} · NUI {{ businessNui }}</span><span>{{ formatDate(from) }} – {{ formatDate(to) }} · {{ currency }}</span></div>
 

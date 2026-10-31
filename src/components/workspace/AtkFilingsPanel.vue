@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import api from '@/lib/api'
+import { downloadFromApi } from '@/lib/download'
 import { formatMoney, getApiError, todayIsoDate } from '@/lib/format'
 
 interface BookRow { date: string; invoice_number: string; name: string; identifier: string; vat_number: string; boxes: Record<string, string> }
@@ -52,15 +53,7 @@ async function download(book: 'sales' | 'purchases'): Promise<void> {
   error.value = ''
 
   try {
-    const response = await api.get<Blob>(`/api/v1/businesses/${props.businessId}/atk/vat-books/${book}.xlsx`, { params: { period: period.value }, responseType: 'blob' })
-    const disposition = String(response.headers['content-disposition'] ?? '')
-    const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `${book === 'sales' ? 'Libri-i-Shitjes' : 'Libri-i-Blerjes'}-${period.value}.xlsx`
-    const url = URL.createObjectURL(response.data)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    link.click()
-    URL.revokeObjectURL(url)
+    await downloadFromApi(`/api/v1/businesses/${props.businessId}/atk/vat-books/${book}.xlsx`, { period: period.value }, `${book === 'sales' ? 'Libri-i-Shitjes' : 'Libri-i-Blerjes'}-${period.value}.xlsx`)
   } catch (caught: unknown) {
     error.value = getApiError(caught, 'We could not download this book.')
   } finally {

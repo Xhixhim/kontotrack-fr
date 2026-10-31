@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import api from '@/lib/api'
+import { downloadFromApi } from '@/lib/download'
 
 interface PrintBusiness {
   id: number
@@ -93,6 +94,21 @@ function printInvoice(): void {
   window.print()
 }
 
+const downloading = ref(false)
+
+async function downloadPdf(): Promise<void> {
+  downloading.value = true
+  pageError.value = ''
+
+  try {
+    await downloadFromApi(`/api/v1/businesses/${businessId}/invoices/${invoiceId}/pdf`, {}, `Fature-${invoice.value?.invoice_number ?? invoiceId}.pdf`)
+  } catch {
+    pageError.value = 'We could not download the PDF.'
+  } finally {
+    downloading.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const [businessesResponse, invoiceResponse] = await Promise.all([
@@ -112,7 +128,10 @@ onMounted(async () => {
   <main class="print-page">
     <div class="print-toolbar">
       <RouterLink :to="{ name: 'business', params: { businessId } }">← Back to workspace</RouterLink>
-      <button class="primary-button" type="button" :disabled="!invoice" @click="printInvoice">Print / Save as PDF</button>
+      <span class="print-toolbar-actions">
+        <button class="text-button" type="button" :disabled="!invoice || downloading" @click="downloadPdf">{{ downloading ? 'Downloading…' : 'Download PDF' }}</button>
+        <button class="primary-button" type="button" :disabled="!invoice" @click="printInvoice">Print</button>
+      </span>
     </div>
 
     <p v-if="pageError" class="error-text" role="alert">{{ pageError }}</p>
@@ -193,6 +212,8 @@ onMounted(async () => {
 .print-page { min-height: 100vh; padding: 24px 16px 48px; background: #eef2ee; color: #1f2d25; font-family: Inter, system-ui, sans-serif; }
 .print-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; max-width: 210mm; margin: 0 auto 16px; }
 .print-toolbar a { color: #2f5a41; font-size: 13px; font-weight: 600; text-decoration: none; }
+.print-toolbar-actions { display: flex; align-items: center; gap: 10px; }
+.print-toolbar .text-button { padding: 5px; border: 0; color: #245c45; background: transparent; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; }
 .primary-button { min-height: 38px; padding: 8px 14px; border: 0; border-radius: 8px; color: #fff; background: #2f5a41; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .primary-button:disabled { opacity: 0.5; cursor: default; }
 .error-text { max-width: 210mm; margin: 0 auto; color: #9b352b; }
