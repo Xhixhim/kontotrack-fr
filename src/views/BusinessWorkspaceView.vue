@@ -7,6 +7,8 @@ import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
 import AtkFilingsPanel from '@/components/workspace/AtkFilingsPanel.vue'
+import BankLineCategorizer, { type BankCategory } from '@/components/workspace/BankLineCategorizer.vue'
+import BankReconciliationPanel from '@/components/workspace/BankReconciliationPanel.vue'
 import { downloadFromApi } from '@/lib/download'
 import NotificationBell from '@/components/workspace/NotificationBell.vue'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
@@ -266,6 +268,13 @@ interface BankTransaction {
   currency: string
   is_reconciled: boolean
   reconciled_at: string | null
+  balance_after: string | null
+  source: 'import' | 'payment'
+  category: string | null
+  category_label: string | null
+  category_is_suggestion: boolean
+  account: { id: number; code: string; name: string } | null
+  counterparty: { id: number; name: string } | null
   journal_entry: { id: number; reference: string | null; description: string; entry_date: string } | null
   document: { id: number; original_name: string } | null
 }
@@ -440,6 +449,8 @@ const bankTransactions = ref<BankTransaction[]>([])
 const bankStatementFile = ref<File | null>(null)
 const importingBankStatement = ref(false)
 const reconcilingTransactionId = ref<number | null>(null)
+const bankCategories = ref<BankCategory[]>([])
+const bankImportNotice = ref('')
 const reconciliationSelections = ref<Record<number, string>>({})
 const payments = ref<Payment[]>([])
 const inventoryItems = ref<InventoryItem[]>([])
@@ -974,13 +985,18 @@ async function createBankAccount(): Promise<void> {
 }
 
 async function loadBankTransactions(account: BankAccount): Promise<void> {
+  if (selectedBankAccountId.value !== String(account.id)) bankImportNotice.value = ''
   selectedBankAccountId.value = String(account.id)
   bankTransactions.value = []
   formError.value = ''
 
   try {
-    const response = await api.get<{ data: BankTransaction[] }>(`/api/v1/businesses/${businessId}/bank-accounts/${account.id}/transactions`)
+    const [response, categoriesResponse] = await Promise.all([
+      api.get<{ data: BankTransaction[] }>(`/api/v1/businesses/${businessId}/bank-accounts/${account.id}/transactions`),
+      bankCategories.value.length ? Promise.resolve(null) : api.get<{ data: BankCategory[] }>(`/api/v1/businesses/${businessId}/bank-categories`),
+    ])
     bankTransactions.value = response.data.data
+    if (categoriesResponse) bankCategories.value = categoriesResponse.data.data
   } catch (error: unknown) {
     formError.value = getApiError(error, 'We could not load this bank statement activity.')
   }
@@ -998,16 +1014,33 @@ async function importBankStatement(): Promise<void> {
   try {
     const form = new FormData()
     form.append('file', bankStatementFile.value)
-    const response = await api.post<{ data: BankTransaction[] }>(`/api/v1/businesses/${businessId}/bank-accounts/${selectedBankAccount.value.id}/statement-import`, form)
-    bankTransactions.value = [...response.data.data, ...bankTransactions.value]
+    const response = await api.post<{ data: BankTransaction[]; meta: { imported_count: number; matched_count: number; suggested_count: number } }>(`/api/v1/businesses/${businessId}/bank-accounts/${selectedBankAccount.value.id}/statement-import`, form)
     bankStatementFile.value = null
-    const accountsResponse = await api.get<{ data: BankAccount[] }>(`/api/v1/businesses/${businessId}/bank-accounts`)
-    bankAccounts.value = accountsResponse.data.data
+    const { imported_count: imported, matched_count: matched, suggested_count: suggested } = response.data.meta
+    await refreshBankAccount()
+    bankImportNotice.value = `Imported ${imported} line(s): ${matched} matched to entries already in the books, ${suggested} with a suggested category.`
   } catch (error: unknown) {
     formError.value = getApiError(error, 'We could not import this bank statement.')
   } finally {
     importingBankStatement.value = false
   }
+}
+
+async function refreshBankAccount(): Promise<void> {
+  const accountsResponse = await api.get<{ data: BankAccount[] }>(`/api/v1/businesses/${businessId}/bank-accounts`)
+  bankAccounts.value = accountsResponse.data.data
+  if (selectedBankAccount.value) await loadBankTransactions(selectedBankAccount.value)
+}
+
+function updateBankLine(line: unknown): void {
+  const updated = line as BankTransaction
+  bankTransactions.value = bankTransactions.value.map((item) => item.id === updated.id ? updated : item)
+}
+
+async function bankLineBooked(line: unknown): Promise<void> {
+  updateBankLine(line)
+  const accountsResponse = await api.get<{ data: BankAccount[] }>(`/api/v1/businesses/${businessId}/bank-accounts`)
+  bankAccounts.value = accountsResponse.data.data
 }
 
 function bankTransactionCandidates(transaction: BankTransaction): JournalEntry[] {
@@ -1035,9 +1068,9 @@ async function reconcileBankTransaction(transaction: BankTransaction): Promise<v
       journal_entry_id: entryId ? Number(entryId) : transaction.journal_entry?.id,
     })
     bankTransactions.value = bankTransactions.value.map((item) => item.id === transaction.id ? response.data.data : item)
-    const accountsResponse = await api.get<{ data: BankAccount[] }>(`/api/v1/businesses/${businessId}/bank-accounts`)
-    bankAccounts.value = accountsResponse.data.data
     delete reconciliationSelections.value[transaction.id]
+    // Reconciling can replace the bank line a recorded payment created, so reload the list.
+    await refreshBankAccount()
   } catch (error: unknown) {
     formError.value = getApiError(error, 'We could not reconcile this bank transaction.')
   } finally {
@@ -2471,24 +2504,27 @@ function getApiError(error: unknown, fallback: string): string {
           </form>
           <div class="account-list"><article v-for="account in bankAccounts" :key="account.id" class="money-account-row"><div><strong>{{ account.bank_name }}<template v-if="account.account_name"> · {{ account.account_name }}</template></strong><span>{{ account.iban || 'IBAN not added' }} · {{ account.account ? account.account.code + ' · ' + account.account.name : 'Ledger account needs to be assigned' }}</span><span>{{ account.currency }} ledger balance · {{ account.unreconciled_transactions_count }} unreconciled</span><button class="text-button bank-review-button" type="button" @click="loadBankTransactions(account)">{{ selectedBankAccountId === String(account.id) ? 'Refresh transactions' : 'Review transactions' }}</button></div><strong class="invoice-total">{{ formatMoney(account.balance) }}</strong></article><p v-if="!bankAccounts.length" class="empty-message">No bank accounts yet.</p></div>
           <section v-if="selectedBankAccount" class="bank-reconciliation">
-            <div class="bank-reconciliation-heading"><div><h3>{{ selectedBankAccount.bank_name }} transactions</h3><p>Import the statement your bank exports (Excel or CSV), then match each row to a posted ledger entry.</p></div><span class="status-chip">{{ selectedBankAccount.unreconciled_transactions_count }} to review</span></div>
+            <div class="bank-reconciliation-heading"><div><h3>{{ selectedBankAccount.bank_name }} transactions</h3><p>Import the statement your bank exports (Excel or CSV). Lines already in the books are matched automatically; for the rest, match a posted entry or choose what the line is for and book it.</p></div><span class="status-chip">{{ selectedBankAccount.unreconciled_transactions_count }} to review</span></div>
             <form class="bank-import-form" @submit.prevent="importBankStatement">
               <label>Bank statement (.xlsx or .csv)<input type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" required @change="selectBankStatement" /></label>
               <p class="form-note">Needs a date and a description column (<code>Data</code>, <code>Përshkrimi</code>), plus either one amount column (<code>Shuma</code>: positive for money received, negative for money paid) or separate <code>Debi</code> and <code>Kredi</code> columns. Optional <code>external_id</code> prevents importing a row twice. Bank details above the header and the totals row are skipped. Old .xls files must be saved as .xlsx first.</p>
               <button class="primary-button" type="submit" :disabled="importingBankStatement || !bankStatementFile">{{ importingBankStatement ? 'Importing…' : 'Import statement' }}</button>
             </form>
+            <p v-if="bankImportNotice" class="form-note" role="status">{{ bankImportNotice }}</p>
             <div class="bank-transaction-list">
               <article v-for="transaction in bankTransactions" :key="transaction.id" class="bank-transaction-row">
-                <div class="bank-transaction-summary"><div><strong>{{ transaction.description }}</strong><span>{{ formatDate(transaction.transaction_date) }}<template v-if="transaction.external_id"> · Ref {{ transaction.external_id }}</template><template v-if="transaction.document"> · {{ transaction.document.original_name }}</template></span><span v-if="transaction.journal_entry">Journal #{{ transaction.journal_entry.id }} · {{ transaction.journal_entry.description }}</span></div><strong :class="transaction.amount.startsWith('-') ? 'negative-balance' : 'invoice-total'">{{ formatMoney(transaction.amount) }}</strong></div>
+                <div class="bank-transaction-summary"><div><strong>{{ transaction.description }}</strong><span>{{ formatDate(transaction.transaction_date) }}<template v-if="transaction.external_id"> · Ref {{ transaction.external_id }}</template><template v-if="transaction.document"> · {{ transaction.document.original_name }}</template></span><span v-if="transaction.journal_entry">Journal #{{ transaction.journal_entry.id }} · {{ transaction.journal_entry.description }}</span><span v-if="transaction.is_reconciled && transaction.category_label">{{ transaction.category_label }}<template v-if="transaction.counterparty"> · {{ transaction.counterparty.name }}</template><template v-else-if="transaction.account"> · {{ transaction.account.code }} {{ transaction.account.name }}</template></span><span v-if="transaction.source === 'payment'">Recorded as a payment in the books, not from a statement</span></div><strong :class="transaction.amount.startsWith('-') ? 'negative-balance' : 'invoice-total'">{{ formatMoney(transaction.amount) }}</strong></div>
                 <div v-if="!transaction.is_reconciled" class="bank-match-actions">
                   <label>Matching posted entry<select v-model="reconciliationSelections[transaction.id]"><option value="">Choose entry</option><option v-for="entry in bankTransactionCandidates(transaction)" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}{{ entry.reference ? ` · ${entry.reference}` : '' }}</option></select></label>
                   <button class="primary-button" type="button" :disabled="reconcilingTransactionId === transaction.id || (!reconciliationSelections[transaction.id] && !transaction.journal_entry)" @click="reconcileBankTransaction(transaction)">{{ reconcilingTransactionId === transaction.id ? 'Saving…' : 'Reconcile' }}</button>
                   <span v-if="!bankTransactionCandidates(transaction).length && !transaction.journal_entry" class="form-note">No exact posted match for this date and amount.</span>
                 </div>
+                <BankLineCategorizer v-if="!transaction.is_reconciled && transaction.source === 'import'" :business-id="businessId" :bank-account-id="selectedBankAccount.id" :bank-ledger-account-id="selectedBankAccount.account?.id ?? null" :line="transaction" :categories="bankCategories" :accounts="accounts" :counterparties="counterparties" @changed="updateBankLine" @booked="bankLineBooked" />
                 <div v-else class="bank-reconciled-status"><span class="status-chip">Reconciled</span><span>{{ transaction.reconciled_at ? formatDate(transaction.reconciled_at.slice(0, 10)) : '' }}</span></div>
               </article>
               <p v-if="!bankTransactions.length" class="empty-message">No transactions loaded for this account yet.</p>
             </div>
+            <BankReconciliationPanel :business-id="businessId" :bank-account-id="selectedBankAccount.id" :bank-name="selectedBankAccount.bank_name" :currency="business?.currency ?? 'EUR'" @rules-applied="refreshBankAccount" />
           </section>
         </template>
 
