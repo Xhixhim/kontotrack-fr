@@ -6,6 +6,7 @@ import CreditNoteForm from '@/components/workspace/CreditNoteForm.vue'
 import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
+import AtkFilingsPanel from '@/components/workspace/AtkFilingsPanel.vue'
 import NotificationBell from '@/components/workspace/NotificationBell.vue'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
 import TasksPanel from '@/components/workspace/TasksPanel.vue'
@@ -467,7 +468,7 @@ const dashboardFrom = ref(`${todayIsoDate().slice(0, 7)}-01`)
 const dashboardTo = ref(todayIsoDate())
 const financialReport = ref<FinancialReport | null>(null)
 const reportType = ref<FinancialReport['type']>('trial_balance')
-const reportsView = ref<'statements' | 'ledger'>('statements')
+const reportsView = ref<'statements' | 'ledger' | 'atk'>('statements')
 const reportTypeLabels: Record<FinancialReport['type'], string> = {
   trial_balance: 'Trial balance',
   profit_loss: 'Profit and loss',
@@ -518,6 +519,7 @@ const creditingInvoiceId = ref<number | null>(null)
 const cancelForm = ref({ cancelled_on: todayIsoDate(), cancellation_reason: '' })
 const showCounterpartyForm = ref(false)
 const showAccountForm = ref(false)
+const chartTemplateNotice = ref('')
 const showPeriodForm = ref(false)
 const showJournalForm = ref(false)
 const showCashAccountForm = ref(false)
@@ -1092,6 +1094,30 @@ async function createAccount(): Promise<void> {
     showAccountForm.value = false
   } catch (error: unknown) {
     formError.value = getApiError(error, 'We could not save this account.')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function applyKosovoChartTemplate(): Promise<void> {
+  saving.value = true
+  formError.value = ''
+  chartTemplateNotice.value = ''
+
+  try {
+    const response = await api.post<{ data: { created: string[]; skipped: string[]; mapped: string[] } }>(`/api/v1/businesses/${businessId}/accounts/kosovo-template`)
+    const [accountsResponse, postingAccountsResponse] = await Promise.all([
+      api.get<{ data: Account[] }>(`/api/v1/businesses/${businessId}/accounts`),
+      api.get<{ data: PostingAccount[] }>(`/api/v1/businesses/${businessId}/posting-accounts`),
+    ])
+    accounts.value = accountsResponse.data.data
+    setPostingAccounts(postingAccountsResponse.data.data)
+    const { created, skipped, mapped } = response.data.data
+    chartTemplateNotice.value = created.length
+      ? `Added ${created.length} account(s) and mapped ${mapped.length} posting account(s).${skipped.length ? ` ${skipped.length} code(s) already existed and were left unchanged.` : ''}`
+      : 'Every account in the Kosovo standard chart already exists in this business.'
+  } catch (error: unknown) {
+    formError.value = getApiError(error, 'We could not add the Kosovo standard chart.')
   } finally {
     saving.value = false
   }
@@ -1808,6 +1834,33 @@ async function deletePayrollRun(run: PayrollRun): Promise<void> {
   }
 }
 
+async function downloadPayrollWmList(run: PayrollRun): Promise<void> {
+  saving.value = true
+  formError.value = ''
+
+  try {
+    const check = await api.get<{ data: { problems: string[] } }>(`/api/v1/businesses/${businessId}/payroll-runs/${run.id}/atk-wm`)
+
+    if (check.data.data.problems.length) {
+      formError.value = `Fix before declaring in EDI: ${check.data.data.problems.join(' ')}`
+      return
+    }
+
+    const response = await api.get<Blob>(`/api/v1/businesses/${businessId}/payroll-runs/${run.id}/atk-wm`, { params: { download: 1 }, responseType: 'blob' })
+    const filename = /filename="([^"]+)"/.exec(String(response.headers['content-disposition'] ?? ''))?.[1] ?? `Lista-e-pagave-WM-${run.period_year}-${String(run.period_month).padStart(2, '0')}.xlsx`
+    const downloadUrl = URL.createObjectURL(response.data)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(downloadUrl)
+  } catch (error: unknown) {
+    formError.value = getApiError(error, 'We could not export the WM wage list.')
+  } finally {
+    saving.value = false
+  }
+}
+
 function exportPayrollRun(run: PayrollRun): void {
   const rows: string[][] = [
     [`Payroll ${payrollPeriodLabel(run)}`, `Pay date ${run.pay_date}`, `Rules ${run.rule_version ?? ''}`],
@@ -1920,7 +1973,9 @@ function getApiError(error: unknown, fallback: string): string {
         <nav class="kind-tabs no-print" aria-label="Report groups">
           <button :class="{ active: reportsView === 'statements' }" @click="reportsView = 'statements'">Statements</button>
           <button :class="{ active: reportsView === 'ledger' }" @click="reportsView = 'ledger'">Account cards & cash book</button>
+          <button :class="{ active: reportsView === 'atk' }" @click="reportsView = 'atk'">ATK · VAT books</button>
         </nav>
+        <AtkFilingsPanel v-if="reportsView === 'atk'" :business-id="businessId" :currency="business.currency" :vat-registered="business.vat_status === 'registered'" />
         <LedgerReportsPanel v-if="reportsView === 'ledger'" :business-id="businessId" :business-name="business.legal_name" :business-nui="business.nui" :currency="business.currency" :accounts="accounts" :cash-accounts="cashAccounts" />
         <div v-show="reportsView === 'statements'">
         <div v-if="financialReport" class="print-only report-print-heading">
@@ -2263,6 +2318,7 @@ function getApiError(error: unknown, fallback: string): string {
               <div class="report-actions">
                 <button class="text-button" type="button" @click="printFinancialReport">Print / PDF</button>
                 <button class="text-button" type="button" @click="exportPayrollRun(selectedPayrollRun)">Export CSV</button>
+                <button v-if="selectedPayrollRun.status === 'approved'" class="text-button" type="button" :disabled="saving" @click="downloadPayrollWmList(selectedPayrollRun)">WM list for EDI (.xlsx)</button>
                 <button v-if="canEditBookkeeping && selectedPayrollRun.status === 'draft'" class="text-button" type="button" :disabled="saving" @click="deletePayrollRun(selectedPayrollRun)">Delete draft</button>
                 <button v-if="canEditBookkeeping && selectedPayrollRun.status === 'draft'" class="primary-button" type="button" :disabled="saving" @click="approvePayrollRun(selectedPayrollRun)">Approve and post</button>
               </div>
@@ -2527,7 +2583,8 @@ function getApiError(error: unknown, fallback: string): string {
         </template>
 
         <template v-else-if="activeLedgerSection === 'accounts'">
-          <div class="ledger-actions"><p class="form-note">Create the chart of accounts approved for this business.</p><button class="primary-button" @click="showAccountForm = !showAccountForm">{{ showAccountForm ? 'Cancel' : 'Add account' }}</button></div>
+          <div class="ledger-actions"><p class="form-note">Create the chart of accounts approved for this business, or start from the Kosovo standard chart. Existing accounts are never changed.</p><div class="ledger-buttons"><button class="text-button" type="button" :disabled="saving" @click="applyKosovoChartTemplate">Use Kosovo standard chart</button><button class="primary-button" @click="showAccountForm = !showAccountForm">{{ showAccountForm ? 'Cancel' : 'Add account' }}</button></div></div>
+          <p v-if="chartTemplateNotice" class="setup-hint" role="status">{{ chartTemplateNotice }}</p>
           <form v-if="showAccountForm" class="entry-form" @submit.prevent="createAccount">
             <h3>New account</h3>
             <div class="fields-grid">
