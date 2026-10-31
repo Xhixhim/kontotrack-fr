@@ -9,6 +9,7 @@ import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
 import AtkFilingsPanel from '@/components/workspace/AtkFilingsPanel.vue'
 import BankLineCategorizer, { type BankCategory } from '@/components/workspace/BankLineCategorizer.vue'
 import BankReconciliationPanel from '@/components/workspace/BankReconciliationPanel.vue'
+import PeriodReopenPanel, { type ReopenRequest } from '@/components/workspace/PeriodReopenPanel.vue'
 import { downloadFromApi } from '@/lib/download'
 import NotificationBell from '@/components/workspace/NotificationBell.vue'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
@@ -390,6 +391,8 @@ interface AccountingPeriod {
   starts_on: string
   ends_on: string
   status: 'open' | 'closed'
+  reopened_at: string | null
+  pending_reopen_request: ReopenRequest | null
 }
 
 interface ClosingCheck {
@@ -1331,6 +1334,15 @@ async function closePeriod(period: AccountingPeriod): Promise<void> {
     formError.value = getApiError(error, 'This period could not be closed.')
   } finally {
     saving.value = false
+  }
+}
+
+async function reloadPeriods(): Promise<void> {
+  try {
+    const response = await api.get<{ data: AccountingPeriod[] }>(`/api/v1/businesses/${businessId}/periods`)
+    periods.value = response.data.data
+  } catch (error: unknown) {
+    formError.value = getApiError(error, 'We could not reload the periods.')
   }
 }
 
@@ -2658,13 +2670,13 @@ function getApiError(error: unknown, fallback: string): string {
         </template>
 
         <template v-else>
-          <div class="ledger-actions"><p class="form-note">Periods cannot overlap. Closed periods are protected from new journal entries.</p><button class="primary-button" @click="showPeriodForm = !showPeriodForm">{{ showPeriodForm ? 'Cancel' : 'Add period' }}</button></div>
+          <div class="ledger-actions"><p class="form-note">Periods cannot overlap. Closed periods are protected from new journal entries; reopening one needs the business owner's approval.</p><button class="primary-button" @click="showPeriodForm = !showPeriodForm">{{ showPeriodForm ? 'Cancel' : 'Add period' }}</button></div>
           <form v-if="showPeriodForm" class="entry-form" @submit.prevent="createPeriod">
             <h3>New accounting period</h3>
             <div class="fields-grid"><label>Period name<input v-model.trim="periodForm.name" required maxlength="80" /></label><label>Starts on<input v-model="periodForm.starts_on" type="date" required /></label><label>Ends on<input v-model="periodForm.ends_on" type="date" required /></label></div>
             <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save period' }}</button></div>
           </form>
-          <div class="period-list"><article v-for="period in periods" :key="period.id" class="period-row"><div><strong>{{ period.name }}</strong><span>{{ formatDate(period.starts_on) }} – {{ formatDate(period.ends_on) }}</span></div><span class="status-chip" :class="{ posted: period.status === 'closed' }">{{ period.status }}</span><button v-if="period.status === 'open'" class="text-button" type="button" :disabled="saving || closingReviewLoading" @click="reviewPeriodClosing(period)">{{ closingReviewLoading && closingReview?.period_id === period.id ? 'Checking…' : 'Review close' }}</button></article><p v-if="!periods.length" class="empty-message">No accounting periods yet.</p></div>
+          <div class="period-list"><article v-for="period in periods" :key="period.id" class="period-row"><div><strong>{{ period.name }}</strong><span>{{ formatDate(period.starts_on) }} – {{ formatDate(period.ends_on) }}</span></div><span class="status-chip" :class="{ posted: period.status === 'closed' }">{{ period.status }}</span><button v-if="period.status === 'open'" class="text-button" type="button" :disabled="saving || closingReviewLoading" @click="reviewPeriodClosing(period)">{{ closingReviewLoading && closingReview?.period_id === period.id ? 'Checking…' : 'Review close' }}</button><PeriodReopenPanel :business-id="businessId" :period="period" :role="business.role ?? ''" @changed="reloadPeriods" /></article><p v-if="!periods.length" class="empty-message">No accounting periods yet.</p></div>
           <section v-if="closingReview" class="close-review" aria-live="polite">
             <div class="close-review-heading"><div><p class="eyebrow">Month-end review</p><h3>{{ closingReview.name }}</h3></div><button class="text-button" type="button" @click="closingReview = null">Dismiss</button></div>
             <ul class="closing-check-list"><li v-for="check in closingReview.checks" :key="check.key"><span class="closing-check-status" :class="check.status">{{ check.status.replace('_', ' ') }}</span><div><strong>{{ check.label }}</strong><p>{{ check.detail }}</p></div></li></ul>

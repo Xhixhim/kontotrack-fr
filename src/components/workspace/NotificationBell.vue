@@ -23,6 +23,7 @@ const typeLabels: Record<string, string> = {
   document_requested: 'Document requested',
   document_submitted: 'Document to review',
   invitation: 'Invitation',
+  period_reopen_requested: 'Approval needed',
 }
 
 onMounted(async () => {
