@@ -1,6 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import BusinessDashboard from '@/components/dashboard/BusinessDashboard.vue'
+import CommandPalette, { type PaletteItem } from '@/components/shell/CommandPalette.vue'
+import WorkspaceSidebar from '@/components/shell/WorkspaceSidebar.vue'
+import WorkspaceTopbar, { type TopbarBusiness } from '@/components/shell/WorkspaceTopbar.vue'
+import { navigation, type NavKey } from '@/components/shell/navigation'
+import { useMessages } from '@/lib/locale'
+import { workspaceMessages } from '@/locales/workspace'
 import api from '@/lib/api'
 import CreditNoteForm from '@/components/workspace/CreditNoteForm.vue'
 import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
@@ -11,7 +18,6 @@ import BankLineCategorizer, { type BankCategory } from '@/components/workspace/B
 import BankReconciliationPanel from '@/components/workspace/BankReconciliationPanel.vue'
 import PeriodReopenPanel, { type ReopenRequest } from '@/components/workspace/PeriodReopenPanel.vue'
 import { downloadFromApi } from '@/lib/download'
-import NotificationBell from '@/components/workspace/NotificationBell.vue'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
 import TasksPanel from '@/components/workspace/TasksPanel.vue'
 
@@ -312,6 +318,11 @@ interface BusinessDashboardSummary {
   payables: string
   overdue_payables: string
   payable_invoices: number
+  payroll_gross: string | null
+  payroll_employees: number | null
+  payroll_status: 'draft' | 'approved' | null
+  stock_value: string
+  stock_items: number
 }
 
 interface LedgerFinancialReport {
@@ -472,12 +483,6 @@ const teamForm = ref({ email: '', role: 'accountant' })
 const dashboardSummary = ref<BusinessDashboardSummary | null>(null)
 const dashboardLoading = ref(false)
 const controlReport = ref<ControlReport | null>(null)
-const showPassedControls = ref(false)
-const visibleControlChecks = computed(() => {
-  const order = { critical: 0, warning: 1, info: 2, ok: 3 }
-  const checks = [...(controlReport.value?.checks ?? [])].sort((left, right) => order[left.severity] - order[right.severity])
-  return showPassedControls.value ? checks : checks.filter((check) => check.severity === 'critical' || check.severity === 'warning')
-})
 const dashboardError = ref('')
 const dashboardFrom = ref(`${todayIsoDate().slice(0, 7)}-01`)
 const dashboardTo = ref(todayIsoDate())
@@ -619,6 +624,134 @@ const lowStockItems = computed(() => inventoryItems.value.filter((item) => item.
 
 onMounted(loadWorkspace)
 
+/* ---------- App shell: sidebar, top bar, period, command palette ---------- */
+const shellMessages = useMessages(workspaceMessages)
+const businesses = ref<TopbarBusiness[]>([])
+const navKey = ref<NavKey>('overview')
+const paletteOpen = ref(false)
+const periodYear = ref(Number(todayIsoDate().slice(0, 4)))
+const periodMonth = ref(Number(todayIsoDate().slice(5, 7)))
+const sidebarCollapsed = ref(readCollapsed())
+// Below 900px the sidebar always shows icons only.
+const narrowQuery = window.matchMedia('(max-width: 900px)')
+const isNarrow = ref(narrowQuery.matches)
+const onNarrowChange = (event: MediaQueryListEvent) => (isNarrow.value = event.matches)
+narrowQuery.addEventListener('change', onNarrowChange)
+onBeforeUnmount(() => narrowQuery.removeEventListener('change', onNarrowChange))
+const hiddenNavItems = computed<NavKey[]>(() => [...(canViewHistory.value ? [] : ['payroll' as const]), ...(business.value?.role === 'owner' ? [] : ['team' as const])])
+const navBadges = computed<Partial<Record<NavKey, number>>>(() => (controlReport.value?.summary.critical ? { controls: controlReport.value.summary.critical } : {}))
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem('kt-sidebar-collapsed') === '1'
+  } catch {
+    return false
+  }
+}
+
+function toggleSidebar(): void {
+  sidebarCollapsed.value = !sidebarCollapsed.value
+  try {
+    localStorage.setItem('kt-sidebar-collapsed', sidebarCollapsed.value ? '1' : '0')
+  } catch {
+    // The preference only lasts for this visit when storage is blocked.
+  }
+}
+
+/** Opens the existing workspace section behind each sidebar module. */
+function goTo(key: NavKey): void {
+  navKey.value = key
+  if (key === 'overview' || key === 'controls') activeSection.value = 'overview'
+  else if (key === 'customers' || key === 'suppliers') activeSection.value = 'counterparties'
+  else if (key === 'sales' || key === 'purchases') {
+    activeSection.value = 'invoices'
+    setInvoiceKind(key === 'sales' ? 'sale' : 'purchase')
+  } else if (key === 'cash' || key === 'bank') {
+    activeSection.value = 'money'
+    activeMoneySection.value = key
+  } else if (key === 'stock') activeSection.value = 'inventory'
+  else if (key === 'payroll') void openPayroll()
+  else if (key === 'ledger') activeSection.value = 'ledger'
+  else if (key === 'vat' || key === 'reports') {
+    activeSection.value = 'reports'
+    reportsView.value = key === 'vat' ? 'atk' : 'statements'
+  } else if (key === 'profile') openBusinessProfile()
+  else activeSection.value = key
+  window.scrollTo(0, 0)
+  if (key === 'controls') void nextTick(() => document.getElementById('checks-title')?.scrollIntoView({ block: 'start' }))
+}
+
+function openMonthEnd(): void {
+  goTo('ledger')
+  activeLedgerSection.value = 'periods'
+}
+
+function startNewInvoice(): void {
+  goTo('sales')
+  if (!showInvoiceForm.value) toggleInvoiceForm()
+}
+
+function setPeriod(year: number, month: number): void {
+  periodYear.value = year
+  periodMonth.value = month
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const lastDay = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`
+  dashboardFrom.value = `${year}-${pad(month)}-01`
+  dashboardTo.value = lastDay < todayIsoDate() ? lastDay : todayIsoDate()
+  void loadDashboardSummary()
+}
+
+/** A month counts as closed when a closed accounting period covers all of it. */
+function isMonthClosed(year: number, month: number): boolean {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const first = `${year}-${pad(month)}-01`
+  const last = `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`
+  return periods.value.some((period) => period.status === 'closed' && period.starts_on <= first && period.ends_on >= last)
+}
+
+const paletteItems = computed<PaletteItem[]>(() => {
+  const hidden = hiddenNavItems.value
+  const modules = navigation.flatMap((group) => group.items).filter((item) => !hidden.includes(item.key))
+    .map((item): PaletteItem => ({ id: `nav-${item.key}`, group: 'modules', label: shellMessages.value.nav[item.key], icon: item.icon }))
+  const parties = counterparties.value.map((party): PaletteItem => ({ id: `party-${party.id}`, group: 'customers', label: party.name, sub: party.nui ? `NUI ${party.nui}` : undefined, icon: 'storefront' }))
+  const documents = invoices.value.filter((invoice) => invoice.invoice_number).map((invoice): PaletteItem => ({
+    id: `invoice-${invoice.id}-${invoice.kind}`, group: 'invoices', label: invoice.invoice_number ?? '', sub: invoice.counterparty.name, icon: invoice.kind === 'sale' ? 'receipt' : 'shopping-cart',
+  }))
+  return [...modules, ...parties, ...documents]
+})
+
+function selectPaletteItem(item: PaletteItem): void {
+  paletteOpen.value = false
+  if (item.id.startsWith('nav-')) goTo(item.id.slice(4) as NavKey)
+  else if (item.id.startsWith('party-')) goTo('customers')
+  else goTo(item.id.endsWith('-purchase') ? 'purchases' : 'sales')
+}
+
+function onShellKey(event: KeyboardEvent): void {
+  const target = event.target as HTMLElement | null
+  const typing = target !== null && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    paletteOpen.value = true
+  } else if (event.key === '[' && !typing && !event.ctrlKey && !event.metaKey) {
+    toggleSidebar()
+  }
+}
+
+// Only the redesigned shell and dashboard use theme tokens so far; keep the workspace light until every section does.
+let forcedLightTheme = false
+onMounted(() => {
+  window.addEventListener('keydown', onShellKey)
+  if (!document.documentElement.hasAttribute('data-theme')) {
+    document.documentElement.setAttribute('data-theme', 'light')
+    forcedLightTheme = true
+  }
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onShellKey)
+  if (forcedLightTheme) document.documentElement.removeAttribute('data-theme')
+})
+
 function todayIsoDate(): string {
   const now = new Date()
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10)
@@ -644,6 +777,7 @@ async function loadWorkspace(): Promise<void> {
       api.get<{ data: PostingAccount[] }>(`/api/v1/businesses/${businessId}/posting-accounts`),
     ])
 
+    businesses.value = businessesResponse.data.data
     business.value = businessesResponse.data.data.find((item) => item.id === businessId) ?? null
     counterparties.value = partiesResponse.data.data
     invoices.value = invoicesResponse.data.data
@@ -1942,79 +2076,31 @@ function getApiError(error: unknown, fallback: string): string {
 </script>
 
 <template>
+  <div class="kt-workspace" :class="{ collapsed: sidebarCollapsed }">
+    <WorkspaceSidebar :active="navKey" :collapsed="sidebarCollapsed || isNarrow" :hidden="hiddenNavItems" :badges="navBadges" @navigate="goTo" @toggle="toggleSidebar" />
+    <div class="kt-main">
+      <WorkspaceTopbar :business="business" :businesses="businesses" :period="{ year: periodYear, month: periodMonth }" :is-month-closed="isMonthClosed" @period="setPeriod" @search="paletteOpen = true" @month-end="openMonthEnd" />
+      <CommandPalette :open="paletteOpen" :items="paletteItems" @close="paletteOpen = false" @select="selectPaletteItem" />
   <main class="workspace-shell">
-    <header class="workspace-topbar">
-      <RouterLink class="back-link" :to="{ name: 'dashboard' }">← All businesses</RouterLink>
-      <div class="topbar-actions"><NotificationBell /><span class="product-label">KontoTrack</span></div>
-    </header>
-
-    <p v-if="loading" class="notice">Loading business workspace…</p>
+    <p v-if="loading" class="notice">{{ shellMessages.loading }}</p>
     <p v-else-if="pageError" class="notice error" role="alert">{{ pageError }}</p>
 
     <template v-else-if="business">
-      <section class="workspace-title">
-        <p class="eyebrow">Business workspace</p>
-        <h1>{{ business.trade_name || business.legal_name }}</h1>
-        <p class="legal-name">{{ business.legal_name }}</p>
-      </section>
-
-      <nav class="section-tabs" aria-label="Business bookkeeping">
-        <button :class="{ active: activeSection === 'overview' }" @click="activeSection = 'overview'">Overview</button>
-        <button :class="{ active: activeSection === 'profile' }" @click="openBusinessProfile">Business details</button>
-        <button :class="{ active: activeSection === 'invoices' }" @click="activeSection = 'invoices'">Sales & purchases</button>
-        <button :class="{ active: activeSection === 'inventory' }" @click="activeSection = 'inventory'">Inventory</button>
-        <button :class="{ active: activeSection === 'counterparties' }" @click="activeSection = 'counterparties'">Clients & suppliers</button>
-        <button :class="{ active: activeSection === 'money' }" @click="activeSection = 'money'">Cash & bank</button>
-        <button v-if="canViewHistory" :class="{ active: activeSection === 'payroll' }" @click="openPayroll">Employees & payroll</button>
-        <button :class="{ active: activeSection === 'assets' }" @click="activeSection = 'assets'">Fixed assets</button>
-        <button :class="{ active: activeSection === 'documents' }" @click="activeSection = 'documents'">Documents</button>
-        <button :class="{ active: activeSection === 'tasks' }" @click="activeSection = 'tasks'">Tasks & deadlines</button>
-        <button :class="{ active: activeSection === 'ledger' }" @click="activeSection = 'ledger'">Ledger</button>
-        <button :class="{ active: activeSection === 'reports' }" @click="activeSection = 'reports'">Reports</button>
-        <button v-if="business.role === 'owner'" :class="{ active: activeSection === 'team' }" @click="activeSection = 'team'">Team</button>
-      </nav>
-
-      <section v-if="activeSection === 'overview'" class="content-panel">
-        <div class="panel-heading">
-          <div><p class="eyebrow">Business dashboard</p><h2>Financial overview</h2></div>
-          <form class="dashboard-period" @submit.prevent="loadDashboardSummary">
-            <label>From<input v-model="dashboardFrom" type="date" required /></label>
-            <label>To<input v-model="dashboardTo" type="date" required /></label>
-            <button class="primary-button" type="submit" :disabled="dashboardLoading">{{ dashboardLoading ? 'Loading…' : 'Apply' }}</button>
-          </form>
-        </div>
-        <p v-if="dashboardError" class="error-text" role="alert">{{ dashboardError }}</p>
-        <div v-if="dashboardSummary" class="summary-grid">
-          <article class="summary-card"><span>Revenue</span><strong>{{ formatMoney(dashboardSummary.revenue) }}</strong><small>Posted journal entries</small></article>
-          <article class="summary-card"><span>Expenses</span><strong>{{ formatMoney(dashboardSummary.expenses) }}</strong><small>Posted journal entries</small></article>
-          <article class="summary-card"><span>Net result</span><strong>{{ formatMoney(dashboardSummary.result) }}</strong><small>Revenue minus expenses</small></article>
-          <article class="summary-card"><span>Cash balance</span><strong>{{ formatMoney(dashboardSummary.cash_balance) }}</strong><small>As of {{ formatDate(dashboardSummary.to) }}</small></article>
-          <article class="summary-card"><span>Bank balance</span><strong>{{ formatMoney(dashboardSummary.bank_balance) }}</strong><small>As of {{ formatDate(dashboardSummary.to) }}</small></article>
-          <article class="summary-card"><span>Customer balances</span><strong>{{ formatMoney(dashboardSummary.receivables) }}</strong><small>{{ dashboardSummary.receivable_invoices }} open · {{ formatMoney(dashboardSummary.overdue_receivables) }} overdue</small></article>
-          <article class="summary-card"><span>Supplier balances</span><strong>{{ formatMoney(dashboardSummary.payables) }}</strong><small>{{ dashboardSummary.payable_invoices }} open · {{ formatMoney(dashboardSummary.overdue_payables) }} overdue</small></article>
-          <article class="summary-card"><span>Net invoice VAT</span><strong>{{ formatMoney(dashboardSummary.net_vat) }}</strong><small>Sales {{ formatMoney(dashboardSummary.sales_vat) }} · purchases {{ formatMoney(dashboardSummary.purchase_vat) }}</small></article>
-        </div>
-        <div v-if="lowStockItems.length" class="form-note report-note"><strong>{{ lowStockItems.length }} inventory item(s) are below their minimum quantity.</strong> Review Inventory for details.</div>
-        <section v-if="controlReport" class="controls-panel" aria-labelledby="controls-heading">
-          <div class="controls-heading">
-            <h3 id="controls-heading">Automatic checks</h3>
-            <div class="controls-summary">
-              <span class="severity-chip critical">{{ controlReport.summary.critical }} critical</span>
-              <span class="severity-chip warning">{{ controlReport.summary.warning }} warnings</span>
-              <span class="severity-chip ok">{{ controlReport.summary.ok }} passed</span>
-              <button class="text-button" type="button" @click="showPassedControls = !showPassedControls">{{ showPassedControls ? 'Hide passed' : 'Show all' }}</button>
-            </div>
-          </div>
-          <ul class="controls-list">
-            <li v-for="check in visibleControlChecks" :key="check.key" :class="`control-${check.severity}`">
-              <span class="severity-chip" :class="check.severity">{{ check.severity }}</span>
-              <div><strong>{{ check.label }}</strong><p>{{ check.detail }}</p></div>
-            </li>
-            <li v-if="!visibleControlChecks.length" class="control-ok"><span class="severity-chip ok">ok</span><div><strong>All checks passed</strong><p>No critical issues or warnings right now.</p></div></li>
-          </ul>
-        </section>
-        <p class="form-note dashboard-note">Revenue and expense totals use posted ledger entries. VAT is a summary of posted invoices for the selected dates, not a tax declaration.</p>
-      </section>
+      <BusinessDashboard
+        v-if="activeSection === 'overview'"
+        :business-id="businessId"
+        :summary="dashboardSummary"
+        :controls="controlReport"
+        :loading="dashboardLoading"
+        :error="dashboardError"
+        :period="{ year: periodYear, month: periodMonth }"
+        :can-view-history="canViewHistory"
+        :can-edit="canEditBookkeeping"
+        @navigate="goTo"
+        @retry="loadDashboardSummary"
+        @new-invoice="startNewInvoice"
+        @upload="goTo('documents')"
+      />
 
       <section v-if="activeSection === 'reports'" class="content-panel">
         <div class="panel-heading">
@@ -2587,7 +2673,7 @@ function getApiError(error: unknown, fallback: string): string {
         <div class="account-list team-member-list"><article v-for="member in teamMembers" :key="member.id" class="team-member-row"><div><strong>{{ member.name }}</strong><span>{{ member.email }}</span></div><span class="status-chip" :class="{ posted: member.status === 'active' }">{{ member.status }}</span><span class="account-type">{{ member.role.replaceAll('_', ' ') }}</span></article><p v-if="!teamMembers.length" class="empty-message">No team members were found.</p></div>
       </section>
 
-      <section v-else class="content-panel">
+      <section v-else-if="activeSection === 'ledger'" class="content-panel">
         <div class="panel-heading">
           <div><p class="eyebrow">Double-entry bookkeeping</p><h2>Ledger</h2></div>
           <span class="ledger-currency">{{ business.currency }}</span>
@@ -2686,10 +2772,16 @@ function getApiError(error: unknown, fallback: string): string {
       </section>
     </template>
   </main>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.workspace-shell { width: min(100% - 32px, 1040px); margin: 0 auto; padding-bottom: 64px; color: #23352b; }
+.kt-workspace { display: grid; min-height: 100vh; grid-template-columns: 256px minmax(0, 1fr); background: var(--kt-canvas); }
+.kt-workspace.collapsed { grid-template-columns: 64px minmax(0, 1fr); }
+.kt-main { display: flex; min-width: 0; flex-direction: column; }
+.workspace-shell { width: 100%; max-width: 1280px; padding: var(--kt-s-300) var(--kt-s-400) var(--kt-s-700); color: #23352b; }
+@media (max-width: 900px) { .kt-workspace, .kt-workspace.collapsed { grid-template-columns: 64px minmax(0, 1fr); } .workspace-shell { padding: var(--kt-s-200); } }
 .workspace-topbar { display: flex; height: 68px; align-items: center; justify-content: space-between; border-bottom: 1px solid #e1e8e1; }
 .back-link { color: #42644f; font-size: 13px; font-weight: 650; text-decoration: none; }
 .product-label { color: #20382b; font-size: 14px; font-weight: 750; }

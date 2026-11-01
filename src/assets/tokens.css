@@ -1,0 +1,206 @@
+/*
+ * KontoTrack design tokens.
+ * Mirrors the Figma file (Core Colors → Color System / Color System Dark).
+ * Layer 1 (primitives) is folded into the values below; components use only these semantic tokens.
+ */
+:root {
+  --kt-canvas: #f5f7f4;
+  --kt-surface: #ffffff;
+  --kt-surface-hover: #f3f8f5;
+  --kt-surface-selected: #e6f0ea;
+  --kt-surface-subtle: #f5f7f4;
+  --kt-sidebar: #20382b;
+  --kt-sidebar-hover: #2a4033;
+  --kt-sidebar-active: #3a5446;
+  --kt-neutral-subtle: #edf1ed;
+  --kt-tertiary: #e4ebe4;
+
+  --kt-accent: #334b73;
+  --kt-accent-subtle: #edf1f8;
+  --kt-error: #9b352b;
+  --kt-error-subtle: #f8dedb;
+  --kt-warning: #8a5a12;
+  --kt-warning-subtle: #f8ebcf;
+  --kt-success: #2f5a41;
+  --kt-success-subtle: #e2efe6;
+  --kt-cancel-subtle: #fbeee6;
+  --kt-inverted: #18231e;
+
+  --kt-action: #245c45;
+  --kt-action-hover: #1e4e3a;
+  --kt-action-press: #1b4434;
+  --kt-action-disabled: #e4ebe4;
+  --kt-secondary: #ffffff;
+  --kt-secondary-hover: #f5f7f4;
+  --kt-ghost-hover: #e6f0ea;
+
+  --kt-border: #e4ebe4;
+  --kt-divider: #edf1ed;
+  --kt-input: #8a968d;
+  --kt-input-hover: #5f6d63;
+  --kt-focus: #3f7e5f;
+  --kt-border-error: #b5443a;
+  --kt-border-info: #5e7bb0;
+  --kt-border-warning: #a9751b;
+  --kt-border-success: #3d7a55;
+
+  --kt-text: #18231e;
+  --kt-heading: #20382b;
+  --kt-text-2: #45594c;
+  --kt-text-3: #5f6d63;
+  --kt-text-disabled: #a9b5ac;
+  --kt-link: #245c45;
+  --kt-on-action: #ffffff;
+  --kt-on-sidebar: #cbd8cf;
+  --kt-on-sidebar-strong: #ffffff;
+  --kt-on-sidebar-icon: #b0d2bb;
+
+  --kt-t-error: #9b352b;
+  --kt-t-warning: #8a5a12;
+  --kt-t-success: #2f5a41;
+  --kt-t-info: #334b73;
+  --kt-t-cancel: #8a4b2a;
+
+  --kt-overlay: rgb(14 26 19 / 40%);
+  --kt-shadow-1: 0 1px 2px rgb(14 26 19 / 6%);
+  --kt-shadow-2: 0 1px 3px rgb(14 26 19 / 6%), 0 6px 16px rgb(14 26 19 / 10%);
+  --kt-shadow-3: 0 2px 6px rgb(14 26 19 / 8%), 0 16px 40px rgb(14 26 19 / 18%);
+
+  --kt-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --kt-font: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --kt-s-25: 2px;
+  --kt-s-50: 4px;
+  --kt-s-75: 8px;
+  --kt-s-100: 12px;
+  --kt-s-200: 16px;
+  --kt-s-300: 24px;
+  --kt-s-400: 32px;
+  --kt-s-500: 40px;
+  --kt-s-600: 48px;
+  --kt-s-700: 64px;
+  --kt-s-800: 80px;
+  --kt-s-900: 96px;
+
+  --kt-r-4: 4px;
+  --kt-r-6: 6px;
+  --kt-r-8: 8px;
+  --kt-r-12: 12px;
+  --kt-r-16: 16px;
+  --kt-r-24: 24px;
+  --kt-r-full: 9999px;
+}
+
+/* Dark values: same names as the Figma "Color System Dark" collection. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --kt-canvas: #181818;
+    --kt-surface: #1f1f1f;
+    --kt-surface-hover: #272727;
+    --kt-surface-selected: #0e2018;
+    --kt-surface-subtle: #181818;
+    --kt-sidebar: #000000;
+    --kt-sidebar-hover: #272727;
+    --kt-sidebar-active: #313131;
+    --kt-neutral-subtle: #272727;
+    --kt-tertiary: #313131;
+    --kt-accent: #5e7bb0;
+    --kt-accent-subtle: #141e30;
+    --kt-error: #b5443a;
+    --kt-error-subtle: #421713;
+    --kt-warning: #a9751b;
+    --kt-warning-subtle: #3a2709;
+    --kt-success: #3d7a55;
+    --kt-success-subtle: #15281d;
+    --kt-cancel-subtle: #3a2012;
+    --kt-inverted: #f5f7f4;
+    --kt-action: #3f7e5f;
+    --kt-action-hover: #2f6d51;
+    --kt-action-press: #245c45;
+    --kt-action-disabled: #272727;
+    --kt-secondary: #1f1f1f;
+    --kt-secondary-hover: #272727;
+    --kt-ghost-hover: #272727;
+    --kt-border: #313131;
+    --kt-divider: #272727;
+    --kt-input: #77837b;
+    --kt-input-hover: #a9b5ac;
+    --kt-focus: #6fa586;
+    --kt-border-error: #cc5c50;
+    --kt-border-info: #8aa2ce;
+    --kt-border-warning: #c9932e;
+    --kt-border-success: #57966d;
+    --kt-text: #f5f7f4;
+    --kt-heading: #ffffff;
+    --kt-text-2: #d8e1d9;
+    --kt-text-3: #8a968d;
+    --kt-text-disabled: #33443a;
+    --kt-link: #6fa586;
+    --kt-on-sidebar: #a9b5ac;
+    --kt-on-sidebar-icon: #80b593;
+    --kt-t-error: #dd8379;
+    --kt-t-warning: #ddae55;
+    --kt-t-success: #80b593;
+    --kt-t-info: #8aa2ce;
+    --kt-t-cancel: #e19c74;
+    --kt-overlay: rgb(0 0 0 / 64%);
+    --kt-shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+    --kt-shadow-2: 0 1px 3px rgb(0 0 0 / 40%), 0 6px 16px rgb(0 0 0 / 50%);
+    --kt-shadow-3: 0 2px 6px rgb(0 0 0 / 50%), 0 16px 40px rgb(0 0 0 / 60%);
+  }
+}
+:root[data-theme='dark'] {
+  --kt-canvas: #181818;
+  --kt-surface: #1f1f1f;
+  --kt-surface-hover: #272727;
+  --kt-surface-selected: #0e2018;
+  --kt-surface-subtle: #181818;
+  --kt-sidebar: #000000;
+  --kt-sidebar-hover: #272727;
+  --kt-sidebar-active: #313131;
+  --kt-neutral-subtle: #272727;
+  --kt-tertiary: #313131;
+  --kt-accent: #5e7bb0;
+  --kt-accent-subtle: #141e30;
+  --kt-error: #b5443a;
+  --kt-error-subtle: #421713;
+  --kt-warning: #a9751b;
+  --kt-warning-subtle: #3a2709;
+  --kt-success: #3d7a55;
+  --kt-success-subtle: #15281d;
+  --kt-cancel-subtle: #3a2012;
+  --kt-inverted: #f5f7f4;
+  --kt-action: #3f7e5f;
+  --kt-action-hover: #2f6d51;
+  --kt-action-press: #245c45;
+  --kt-action-disabled: #272727;
+  --kt-secondary: #1f1f1f;
+  --kt-secondary-hover: #272727;
+  --kt-ghost-hover: #272727;
+  --kt-border: #313131;
+  --kt-divider: #272727;
+  --kt-input: #77837b;
+  --kt-input-hover: #a9b5ac;
+  --kt-focus: #6fa586;
+  --kt-border-error: #cc5c50;
+  --kt-border-info: #8aa2ce;
+  --kt-border-warning: #c9932e;
+  --kt-border-success: #57966d;
+  --kt-text: #f5f7f4;
+  --kt-heading: #ffffff;
+  --kt-text-2: #d8e1d9;
+  --kt-text-3: #8a968d;
+  --kt-text-disabled: #33443a;
+  --kt-link: #6fa586;
+  --kt-on-sidebar: #a9b5ac;
+  --kt-on-sidebar-icon: #80b593;
+  --kt-t-error: #dd8379;
+  --kt-t-warning: #ddae55;
+  --kt-t-success: #80b593;
+  --kt-t-info: #8aa2ce;
+  --kt-t-cancel: #e19c74;
+  --kt-overlay: rgb(0 0 0 / 64%);
+  --kt-shadow-1: 0 1px 2px rgb(0 0 0 / 40%);
+  --kt-shadow-2: 0 1px 3px rgb(0 0 0 / 40%), 0 6px 16px rgb(0 0 0 / 50%);
+  --kt-shadow-3: 0 2px 6px rgb(0 0 0 / 50%), 0 16px 40px rgb(0 0 0 / 60%);
+}

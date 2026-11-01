@@ -1,4 +1,6 @@
 import './assets/main.css'
+import './assets/tokens.css'
+import './assets/kt-ui.css'
 import './assets/workspace-ui.css'
 
 import { createApp } from 'vue'

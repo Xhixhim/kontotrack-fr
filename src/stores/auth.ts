@@ -30,9 +30,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string, code?: string, recoveryCode?: string): Promise<void> {
+  async function login(email: string, password: string, code?: string, recoveryCode?: string, remember = false): Promise<void> {
     await initializeCsrf()
-    const response = await api.post<UserResponse>('/api/v1/login', { email, password, code: code || undefined, recovery_code: recoveryCode || undefined })
+    const response = await api.post<UserResponse>('/api/v1/login', { email, password, code: code || undefined, recovery_code: recoveryCode || undefined, remember })
     user.value = response.data.data
     initialized.value = true
   }

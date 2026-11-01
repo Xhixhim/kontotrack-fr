@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import DashboardView from '../views/DashboardView.vue'
 import LoginView from '../views/LoginView.vue'
+import LandingView from '../views/LandingView.vue'
 import BusinessWorkspaceView from '../views/BusinessWorkspaceView.vue'
 import ComplianceSettingsView from '../views/ComplianceSettingsView.vue'
 import InvoicePrintView from '../views/InvoicePrintView.vue'
@@ -14,6 +15,11 @@ const router = createRouter({
       name: 'dashboard',
       component: DashboardView,
       meta: { requiresAuth: true },
+    },
+    {
+      path: '/welcome',
+      name: 'landing',
+      component: LandingView,
     },
     {
       path: '/login',
@@ -50,7 +56,9 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresAuth === true && !auth.user) {
-    return { name: 'login' }
+    // Guests opening the app root see the public landing page; deep links go to sign in and come back after.
+    if (to.name === 'dashboard') return { name: 'landing' }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   if ('requiresSystemAdmin' in to.meta && to.meta.requiresSystemAdmin === true && auth.user?.is_system_admin !== true) {

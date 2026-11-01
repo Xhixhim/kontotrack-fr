@@ -1,0 +1,89 @@
+/*
+ * KontoTrack base UI classes built on tokens.css.
+ * Text styles follow the Figma names (Heading / Title / Body / Button / Caption) on the Tailwind scale.
+ * Prefixed with kt- so they never collide with the older workspace-ui.css rules.
+ */
+.kt-heading-1 { font-size: 60px; line-height: 60px; font-weight: 600; letter-spacing: -0.02em; }
+.kt-heading-2 { font-size: 48px; line-height: 48px; font-weight: 600; letter-spacing: -0.02em; }
+.kt-heading-3 { font-size: 36px; line-height: 40px; font-weight: 600; letter-spacing: -0.015em; }
+.kt-heading-4 { font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -0.01em; }
+.kt-heading-5 { font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.01em; }
+.kt-heading-6 { font-size: 20px; line-height: 28px; font-weight: 600; }
+.kt-title-1 { font-size: 20px; line-height: 28px; font-weight: 500; }
+.kt-title-2 { font-size: 18px; line-height: 28px; font-weight: 500; }
+.kt-title-3 { font-size: 16px; line-height: 24px; font-weight: 500; }
+.kt-title-4 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.kt-body-3 { font-size: 16px; line-height: 24px; font-weight: 400; }
+.kt-body-4 { font-size: 14px; line-height: 20px; font-weight: 600; }
+.kt-body-5 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.kt-body-6 { font-size: 14px; line-height: 20px; font-weight: 400; }
+.kt-caption-1 { font-size: 14px; line-height: 20px; font-weight: 500; }
+.kt-caption-2 { font-size: 14px; line-height: 20px; font-weight: 400; }
+.kt-caption-3 { font-size: 12px; line-height: 16px; font-weight: 600; }
+.kt-caption-4 { font-size: 12px; line-height: 16px; font-weight: 500; }
+.kt-caption-5 { font-size: 12px; line-height: 16px; font-weight: 400; }
+.kt-num { font-variant-numeric: tabular-nums; }
+.kt-muted { color: var(--kt-text-3); }
+.kt-second { color: var(--kt-text-2); }
+.kt-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Buttons: 40px, radius 8, press scale 0.97, hover only on fine pointers */
+.kt-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--kt-s-75);
+  height: 40px; padding: 0 var(--kt-s-200); border: 1px solid transparent; border-radius: var(--kt-r-8);
+  font: 600 14px/20px var(--kt-font); white-space: nowrap; text-decoration: none; cursor: pointer;
+  transition: background-color 150ms var(--kt-ease), transform 100ms var(--kt-ease);
+}
+.kt-btn:active { transform: scale(0.97); }
+.kt-btn:focus-visible { outline: 2px solid var(--kt-focus); outline-offset: 2px; }
+.kt-btn--primary { color: var(--kt-on-action); background: var(--kt-action); }
+.kt-btn--secondary { border-color: var(--kt-input); color: var(--kt-text); background: var(--kt-secondary); }
+.kt-btn--ghost { color: var(--kt-link); background: transparent; }
+.kt-btn--sm { height: 32px; padding: 0 var(--kt-s-100); }
+.kt-btn--lg { height: 48px; padding: 0 var(--kt-s-300); }
+.kt-btn:disabled { border-color: transparent; color: var(--kt-text-disabled); background: var(--kt-action-disabled); cursor: not-allowed; transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  .kt-btn--primary:not(:disabled):hover { background: var(--kt-action-hover); }
+  .kt-btn--secondary:not(:disabled):hover { background: var(--kt-secondary-hover); }
+  .kt-btn--ghost:not(:disabled):hover { background: var(--kt-ghost-hover); }
+}
+
+/* Status chips: always icon + word, never colour alone */
+.kt-chip {
+  display: inline-flex; align-items: center; gap: var(--kt-s-50); height: 24px; padding: 0 var(--kt-s-75);
+  border-radius: var(--kt-r-full); font: 500 12px/16px var(--kt-font); white-space: nowrap;
+}
+.kt-chip--critical { color: var(--kt-t-error); background: var(--kt-error-subtle); }
+.kt-chip--warning { color: var(--kt-t-warning); background: var(--kt-warning-subtle); }
+.kt-chip--ok { color: var(--kt-t-success); background: var(--kt-success-subtle); }
+.kt-chip--info { color: var(--kt-text-2); background: var(--kt-neutral-subtle); }
+.kt-chip--suggested { border: 1px dashed var(--kt-border-info); color: var(--kt-t-info); background: var(--kt-accent-subtle); }
+
+/* Inputs: 40px, border reaches 3:1 against the surface */
+.kt-field { display: flex; flex-direction: column; gap: var(--kt-s-75); min-width: 0; }
+.kt-label { color: var(--kt-text-2); font: 500 14px/20px var(--kt-font); }
+.kt-input {
+  width: 100%; min-width: 0; height: 40px; padding: 0 var(--kt-s-100); border: 1px solid var(--kt-input); border-radius: var(--kt-r-8);
+  color: var(--kt-text); background: var(--kt-surface); font: 400 14px/20px var(--kt-font);
+}
+.kt-input:hover { border-color: var(--kt-input-hover); }
+.kt-input:focus { padding: 0 11px; border: 2px solid var(--kt-focus); outline: none; }
+.kt-input[aria-invalid='true'] { padding: 0 11px; border: 2px solid var(--kt-border-error); }
+.kt-field-error { display: flex; align-items: center; gap: var(--kt-s-50); color: var(--kt-t-error); font: 500 12px/16px var(--kt-font); }
+
+/* Banner */
+.kt-banner { display: flex; align-items: flex-start; gap: var(--kt-s-100); padding: var(--kt-s-100) var(--kt-s-200); border: 1px solid; border-radius: var(--kt-r-8); color: var(--kt-text); }
+.kt-banner--error { border-color: var(--kt-border-error); background: var(--kt-error-subtle); }
+.kt-banner--error > svg { color: var(--kt-t-error); }
+.kt-banner--info { border-color: var(--kt-border-info); background: var(--kt-accent-subtle); }
+.kt-banner--info > svg { color: var(--kt-t-info); }
+
+/* Segmented control (language toggle) */
+.kt-seg { display: inline-flex; flex: none; padding: 2px; border-radius: var(--kt-r-8); background: var(--kt-neutral-subtle); }
+.kt-seg button { padding: var(--kt-s-50) var(--kt-s-100); border: 0; border-radius: var(--kt-r-6); color: var(--kt-text-3); background: transparent; font: 600 12px/16px var(--kt-font); cursor: pointer; }
+.kt-seg button[aria-pressed='true'] { color: var(--kt-text); background: var(--kt-surface); box-shadow: var(--kt-shadow-1); }
+.kt-seg button:focus-visible { outline: 2px solid var(--kt-focus); outline-offset: 1px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kt-btn, .kt-btn:active { transition: none; transform: none; }
+}

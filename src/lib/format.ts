@@ -2,6 +2,18 @@ export function formatMoney(value: string | number | null | undefined, currency 
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(Number(value ?? 0))
 }
 
+const ksNumber = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** Kosovo display format, 1.234,56, with a true minus sign (−) for negatives. */
+export function formatAmountKs(value: number): string {
+  return ksNumber.format(value).replace(/^-/, '−')
+}
+
+/** Money in the Kosovo display format: 1.234,56 €. */
+export function formatEuroKs(value: number): string {
+  return `${formatAmountKs(value)} €`
+}
+
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
   return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(new Date(`${value.slice(0, 10)}T00:00:00`))
