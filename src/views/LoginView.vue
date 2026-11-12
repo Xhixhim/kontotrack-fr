@@ -22,7 +22,6 @@ const email = ref('')
 const password = ref('')
 const remember = ref(false)
 const showPassword = ref(false)
-const showForgot = ref(false)
 const code = ref('')
 const recoveryCode = ref('')
 const useRecovery = ref(false)
@@ -175,16 +174,15 @@ function backToCredentials(): void {
         <div class="kt-field">
           <div class="row">
             <label class="kt-label" for="login-password">{{ m.password }}</label>
-            <button type="button" class="text-link kt-caption-1" :aria-expanded="showForgot" aria-controls="forgot-help" @click="showForgot = !showForgot">{{ m.forgot }}</button>
+            <RouterLink class="text-link kt-caption-1" :to="{ name: 'forgot-password', query: email.trim() ? { email: email.trim() } : {} }">{{ m.forgot }}</RouterLink>
           </div>
           <div class="password">
-            <input id="login-password" ref="passwordInput" v-model="password" class="kt-input" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" required :aria-invalid="!!fieldErrors.password" aria-describedby="login-password-error forgot-help" />
+            <input id="login-password" ref="passwordInput" v-model="password" class="kt-input" :type="showPassword ? 'text' : 'password'" autocomplete="current-password" required :aria-invalid="!!fieldErrors.password" aria-describedby="login-password-error" />
             <button type="button" class="reveal" :aria-label="showPassword ? m.hidePassword : m.showPassword" :aria-pressed="showPassword" @click="showPassword = !showPassword">
               <KtIcon :name="showPassword ? 'eye-slash' : 'eye'" :size="16" />
             </button>
           </div>
           <span v-if="fieldErrors.password" id="login-password-error" class="kt-field-error"><KtIcon name="warning-circle" :size="14" />{{ fieldErrors.password }}</span>
-          <p v-show="showForgot" id="forgot-help" class="kt-caption-5 kt-muted">{{ m.forgotHelp }}</p>
         </div>
 
         <label class="check kt-body-6"><input v-model="remember" type="checkbox" />{{ m.remember }}</label>
@@ -250,7 +248,7 @@ function backToCredentials(): void {
 .box { display: flex; width: 100%; max-width: 400px; flex-direction: column; gap: var(--kt-s-300); margin: auto; padding-block: var(--kt-s-600); }
 .heading { display: flex; flex-direction: column; gap: var(--kt-s-75); }
 .row { display: flex; align-items: center; justify-content: space-between; gap: var(--kt-s-200); }
-.text-link { display: inline-flex; align-items: center; gap: var(--kt-s-50); align-self: flex-start; padding: 0; border: 0; border-radius: var(--kt-r-4); color: var(--kt-link); background: none; cursor: pointer; }
+.text-link { display: inline-flex; align-items: center; gap: var(--kt-s-50); align-self: flex-start; padding: 0; border: 0; border-radius: var(--kt-r-4); color: var(--kt-link); background: none; cursor: pointer; text-decoration: none; }
 .text-link:hover { text-decoration: underline; }
 .text-link:focus-visible { outline: 2px solid var(--kt-focus); outline-offset: 2px; }
 .password { position: relative; }

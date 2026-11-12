@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import api from '@/lib/api'
 import NotificationBell from '@/components/workspace/NotificationBell.vue'
+import ChangePasswordForm from '@/components/workspace/ChangePasswordForm.vue'
 import TwoFactorSettings from '@/components/workspace/TwoFactorSettings.vue'
 
 interface Business {
@@ -264,7 +265,10 @@ async function sendMessage(): Promise<void> {
         <p class="email">{{ auth.user?.email }}</p>
       </div>
       <div class="connection"><span></span> Connected to the KontoTrack API</div>
-      <RouterLink v-if="auth.user?.is_system_admin" class="compliance-link" :to="{ name: 'compliance-settings' }">Compliance rules</RouterLink>
+      <div v-if="auth.user?.is_system_admin" class="admin-links">
+        <RouterLink class="compliance-link" :to="{ name: 'compliance-settings' }">Compliance rules</RouterLink>
+        <RouterLink class="compliance-link" :to="{ name: 'system-users' }">Users</RouterLink>
+      </div>
     </section>
 
     <section v-if="invitations.length || invitationError" class="invitation-section" aria-labelledby="invitation-heading">
@@ -277,6 +281,7 @@ async function sendMessage(): Promise<void> {
     </section>
 
     <TwoFactorSettings />
+    <ChangePasswordForm />
 
     <section class="business-section" aria-labelledby="business-heading">
       <div class="section-heading">
@@ -390,6 +395,8 @@ async function sendMessage(): Promise<void> {
 .brand { display: inline-flex; align-items: center; gap: 10px; color: #20382b; font-size: 17px; font-weight: 750; text-decoration: none; }
 .brand span { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px; color: #fff; background: #245c45; }
 .sign-out { padding: 10px 15px; border: 1px solid #d7e0d8; border-radius: 9px; color: #34453b; background: #fff; font-weight: 650; }
+.admin-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.compliance-link { color: #245c45; font-size: 13px; font-weight: 700; }
 .welcome-card { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-top: 36px; padding: 30px; border: 1px solid #e0e8df; border-radius: 18px; background: #fff; }
 .eyebrow { margin: 0 0 8px; color: #527360; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 h1 { margin: 0; color: #18231e; font-size: clamp(26px, 4vw, 36px); letter-spacing: -.04em; }
