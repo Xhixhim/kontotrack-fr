@@ -46,3 +46,9 @@ npm run build
 ```sh
 npm run lint
 ```
+
+## Checks and staging
+
+Every push and pull request runs `.github/workflows/ci.yml`: type check, lint and a production build.
+
+To build for staging, copy `.env.staging.example` to `.env.staging.local`, set the address of the staging API, and run `npx vite build --mode staging`. The built files are in `dist/`.
