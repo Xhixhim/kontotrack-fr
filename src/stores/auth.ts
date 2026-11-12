@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string
   is_system_admin: boolean
   two_factor_enabled?: boolean
+  email_notifications?: boolean
 }
 
 interface UserResponse {

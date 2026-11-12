@@ -10,6 +10,7 @@ import { useMessages } from '@/lib/locale'
 import { workspaceMessages } from '@/locales/workspace'
 import api from '@/lib/api'
 import CreditNoteForm from '@/components/workspace/CreditNoteForm.vue'
+import InvoiceEmailForm from '@/components/workspace/InvoiceEmailForm.vue'
 import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
@@ -217,7 +218,9 @@ interface Invoice {
   cancelled_on: string | null
   cancellation_reason: string | null
   cancellation_journal_entry_id: number | null
-  counterparty: { id: number; name: string; type: string }
+  counterparty: { id: number; name: string; type: string; email?: string | null }
+  last_sent_at?: string | null
+  last_sent_to?: string | null
   document: { id: number; original_name: string; mime_type: string | null; size_bytes: number } | null
   lines: Array<{ id: number; description: string; quantity: string; unit?: string | null; inventory_item_id?: number | null; warehouse_id?: number | null; unit_price: string; discount_amount: string; vat_code: string; net_amount: string; tax_amount: string }>
 }
@@ -528,6 +531,7 @@ const showInvoiceForm = ref(false)
 const issueSelections = ref<Record<number, string>>({})
 const cancellingInvoiceId = ref<number | null>(null)
 const creditingInvoiceId = ref<number | null>(null)
+const emailingInvoiceId = ref<number | null>(null)
 const cancelForm = ref({ cancelled_on: todayIsoDate(), cancellation_reason: '' })
 const showCounterpartyForm = ref(false)
 const showAccountForm = ref(false)
@@ -2214,12 +2218,15 @@ function getApiError(error: unknown, fallback: string): string {
             <RouterLink class="text-button invoice-print-link" :to="{ name: 'invoice-print', params: { businessId, invoiceId: invoice.id } }" target="_blank">Print / PDF</RouterLink>
             <p v-if="invoice.status === 'cancelled'" class="invoice-cancellation-note">Cancelled {{ formatDate(invoice.cancelled_on ?? '') }} · {{ invoice.cancellation_reason }}</p>
             <span v-if="invoice.document_type === 'credit_note'" class="severity-chip info invoice-credit-badge">Credit note</span>
-            <div v-if="cancellingInvoiceId !== invoice.id && creditingInvoiceId !== invoice.id" class="invoice-issue-actions">
+            <p v-if="invoice.last_sent_at" class="invoice-cancellation-note">Sent by email {{ formatDate(invoice.last_sent_at.slice(0, 10)) }} · {{ invoice.last_sent_to }}</p>
+            <div v-if="cancellingInvoiceId !== invoice.id && creditingInvoiceId !== invoice.id && emailingInvoiceId !== invoice.id" class="invoice-issue-actions">
+              <button v-if="invoice.kind === 'sale' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="emailingInvoiceId = invoice.id">{{ invoice.last_sent_at ? 'Send again' : 'Send by email' }}</button>
               <button v-if="invoice.status === 'draft' && canEditBookkeeping" class="text-button" type="button" :disabled="saving" @click="deleteDraftInvoice(invoice)">Delete draft</button>
               <button v-if="invoice.document_type !== 'credit_note' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="creditingInvoiceId = invoice.id">Credit note</button>
               <button v-if="invoice.status === 'issued' && invoice.document_type !== 'credit_note' && Number(invoice.credited_total) === 0" class="text-button" type="button" :disabled="saving" @click="startInvoiceCancellation(invoice)">Cancel invoice</button>
             </div>
             <CreditNoteForm v-if="creditingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" :documents="documents" @cancel="creditingInvoiceId = null" @created="onCreditNoteCreated" />
+            <InvoiceEmailForm v-if="emailingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" @cancel="emailingInvoiceId = null" @sent="(sent) => { Object.assign(invoice, sent); emailingInvoiceId = null }" />
             <form v-if="cancellingInvoiceId === invoice.id" class="invoice-cancel-form" @submit.prevent="cancelInvoice(invoice)">
               <label>Cancellation date<input v-model="cancelForm.cancelled_on" type="date" :min="invoice.issued_on" required /></label>
               <label>Reason<input v-model.trim="cancelForm.cancellation_reason" maxlength="500" required /></label>
@@ -2239,12 +2246,15 @@ function getApiError(error: unknown, fallback: string): string {
             <RouterLink class="text-button invoice-print-link" :to="{ name: 'invoice-print', params: { businessId, invoiceId: invoice.id } }" target="_blank">Print / PDF</RouterLink>
             <p v-if="invoice.status === 'cancelled'" class="invoice-cancellation-note">Cancelled {{ formatDate(invoice.cancelled_on ?? '') }} · {{ invoice.cancellation_reason }}</p>
             <span v-if="invoice.document_type === 'credit_note'" class="severity-chip info invoice-credit-badge">Credit note</span>
-            <div v-if="cancellingInvoiceId !== invoice.id && creditingInvoiceId !== invoice.id" class="invoice-issue-actions">
+            <p v-if="invoice.last_sent_at" class="invoice-cancellation-note">Sent by email {{ formatDate(invoice.last_sent_at.slice(0, 10)) }} · {{ invoice.last_sent_to }}</p>
+            <div v-if="cancellingInvoiceId !== invoice.id && creditingInvoiceId !== invoice.id && emailingInvoiceId !== invoice.id" class="invoice-issue-actions">
+              <button v-if="invoice.kind === 'sale' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="emailingInvoiceId = invoice.id">{{ invoice.last_sent_at ? 'Send again' : 'Send by email' }}</button>
               <button v-if="invoice.status === 'draft' && canEditBookkeeping" class="text-button" type="button" :disabled="saving" @click="deleteDraftInvoice(invoice)">Delete draft</button>
               <button v-if="invoice.document_type !== 'credit_note' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="creditingInvoiceId = invoice.id">Credit note</button>
               <button v-if="invoice.status === 'issued' && invoice.document_type !== 'credit_note' && Number(invoice.credited_total) === 0" class="text-button" type="button" :disabled="saving" @click="startInvoiceCancellation(invoice)">Cancel invoice</button>
             </div>
             <CreditNoteForm v-if="creditingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" :documents="documents" @cancel="creditingInvoiceId = null" @created="onCreditNoteCreated" />
+            <InvoiceEmailForm v-if="emailingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" @cancel="emailingInvoiceId = null" @sent="(sent) => { Object.assign(invoice, sent); emailingInvoiceId = null }" />
             <form v-if="cancellingInvoiceId === invoice.id" class="invoice-cancel-form" @submit.prevent="cancelInvoice(invoice)">
               <label>Cancellation date<input v-model="cancelForm.cancelled_on" type="date" :min="invoice.issued_on" required /></label>
               <label>Reason<input v-model.trim="cancelForm.cancellation_reason" maxlength="500" required /></label>
