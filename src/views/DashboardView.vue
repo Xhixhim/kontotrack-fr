@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import api from '@/lib/api'
 import NotificationBell from '@/components/workspace/NotificationBell.vue'
 import ChangePasswordForm from '@/components/workspace/ChangePasswordForm.vue'
+import ReminderEmailToggle from '@/components/workspace/ReminderEmailToggle.vue'
 import TwoFactorSettings from '@/components/workspace/TwoFactorSettings.vue'
 
 interface Business {
@@ -282,6 +283,7 @@ async function sendMessage(): Promise<void> {
 
     <TwoFactorSettings />
     <ChangePasswordForm />
+    <ReminderEmailToggle />
 
     <section class="business-section" aria-labelledby="business-heading">
       <div class="section-heading">
