@@ -24,6 +24,7 @@ import { downloadFromApi } from '@/lib/download'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
 import TasksPanel from '@/components/workspace/TasksPanel.vue'
 import TeamPanel from '@/components/workspace/TeamPanel.vue'
+import YearEndClosePanel from '@/components/workspace/YearEndClosePanel.vue'
 import BusinessUnitsPanel, { type BusinessUnit } from '@/components/workspace/BusinessUnitsPanel.vue'
 
 interface Business {
@@ -1695,6 +1696,11 @@ async function createCounterparty(): Promise<void> {
   }
 }
 
+async function refreshJournalEntries(): Promise<void> {
+  const response = await api.get<{ data: JournalEntry[] }>(`/api/v1/businesses/${businessId}/journal-entries`)
+  journalEntries.value = response.data.data
+}
+
 async function refreshCounterparties(): Promise<void> {
   const response = await api.get<{ data: Counterparty[] }>(`/api/v1/businesses/${businessId}/counterparties`)
   counterparties.value = response.data.data
@@ -2796,6 +2802,7 @@ function getApiError(error: unknown, fallback: string): string {
             <ul class="closing-check-list"><li v-for="check in closingReview.checks" :key="check.key"><span class="closing-check-status" :class="check.status">{{ check.status.replace('_', ' ') }}</span><div><strong>{{ check.label }}</strong><p>{{ check.detail }}</p></div></li></ul>
             <div class="form-footer"><button class="primary-button" type="button" :disabled="saving || !closingReview.can_close" @click="closeReviewedPeriod">{{ saving ? 'Closing…' : closingReview.can_close ? 'Confirm and close period' : 'Resolve blockers before closing' }}</button></div>
           </section>
+          <YearEndClosePanel :business-id="businessId" :currency="business.currency" :can-edit="canEditBookkeeping" @closed="refreshJournalEntries" />
         </template>
       </section>
     </template>
