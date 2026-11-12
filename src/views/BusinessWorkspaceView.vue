@@ -14,6 +14,7 @@ import InvoiceEmailForm from '@/components/workspace/InvoiceEmailForm.vue'
 import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
+import OperationalReportsPanel from '@/components/workspace/OperationalReportsPanel.vue'
 import AtkFilingsPanel from '@/components/workspace/AtkFilingsPanel.vue'
 import BankLineCategorizer, { type BankCategory } from '@/components/workspace/BankLineCategorizer.vue'
 import BankReconciliationPanel from '@/components/workspace/BankReconciliationPanel.vue'
@@ -483,7 +484,7 @@ const dashboardFrom = ref(`${todayIsoDate().slice(0, 7)}-01`)
 const dashboardTo = ref(todayIsoDate())
 const financialReport = ref<FinancialReport | null>(null)
 const reportType = ref<FinancialReport['type']>('trial_balance')
-const reportsView = ref<'statements' | 'ledger' | 'atk'>('statements')
+const reportsView = ref<'statements' | 'ledger' | 'operations' | 'atk'>('statements')
 const reportTypeLabels: Record<FinancialReport['type'], string> = {
   trial_balance: 'Trial balance',
   profit_loss: 'Profit and loss',
@@ -507,6 +508,9 @@ const vatFinancialReport = computed(() => financialReport.value && isVatSummaryR
 const ledgerFinancialReport = computed(() => financialReport.value && isLedgerFinancialReport(financialReport.value) ? financialReport.value : null)
 const reportFrom = ref(`${todayIsoDate().slice(0, 7)}-01`)
 const reportTo = ref(todayIsoDate())
+const reportCounterpartyId = ref('')
+// Ageing reports can be narrowed to one customer or supplier.
+const reportCounterpartyFilter = computed(() => (['receivable_aging', 'payable_aging'].includes(reportType.value) && reportCounterpartyId.value ? { counterparty_id: reportCounterpartyId.value } : {}))
 const reportLoading = ref(false)
 const reportError = ref('')
 const activeSection = ref<'overview' | 'profile' | 'invoices' | 'inventory' | 'counterparties' | 'money' | 'payroll' | 'assets' | 'documents' | 'tasks' | 'ledger' | 'reports' | 'team'>('overview')
@@ -828,7 +832,7 @@ async function downloadFinancialReport(format: 'xlsx' | 'pdf'): Promise<void> {
   reportError.value = ''
 
   try {
-    await downloadFromApi(`/api/v1/businesses/${businessId}/reports/financial/export`, { type: reportType.value, from: reportFrom.value, to: reportTo.value, format }, `${reportType.value}.${format}`)
+    await downloadFromApi(`/api/v1/businesses/${businessId}/reports/financial/export`, { type: reportType.value, from: reportFrom.value, to: reportTo.value, format, ...reportCounterpartyFilter.value }, `${reportType.value}.${format}`)
   } catch (error: unknown) {
     reportError.value = getApiError(error, 'We could not export this report.')
   } finally {
@@ -842,7 +846,7 @@ async function loadFinancialReport(): Promise<void> {
 
   try {
     const response = await api.get<{ data: FinancialReport }>(`/api/v1/businesses/${businessId}/reports/financial`, {
-      params: { type: reportType.value, from: reportFrom.value, to: reportTo.value },
+      params: { type: reportType.value, from: reportFrom.value, to: reportTo.value, ...reportCounterpartyFilter.value },
     })
     financialReport.value = response.data.data
   } catch (error: unknown) {
@@ -2096,8 +2100,10 @@ function getApiError(error: unknown, fallback: string): string {
         <nav class="kind-tabs no-print" aria-label="Report groups">
           <button :class="{ active: reportsView === 'statements' }" @click="reportsView = 'statements'">Statements</button>
           <button :class="{ active: reportsView === 'ledger' }" @click="reportsView = 'ledger'">Account cards & cash book</button>
+          <button :class="{ active: reportsView === 'operations' }" @click="reportsView = 'operations'">Turnover, stock, payroll, assets</button>
           <button :class="{ active: reportsView === 'atk' }" @click="reportsView = 'atk'">ATK · VAT books</button>
         </nav>
+        <OperationalReportsPanel v-if="reportsView === 'operations'" :business-id="businessId" :currency="business.currency" :counterparties="counterparties" :warehouses="warehouses" :can-view-payroll="canViewPayroll" />
         <AtkFilingsPanel v-if="reportsView === 'atk'" :business-id="businessId" :currency="business.currency" :vat-registered="business.vat_status === 'registered'" />
         <LedgerReportsPanel v-if="reportsView === 'ledger'" :business-id="businessId" :business-name="business.legal_name" :business-nui="business.nui" :currency="business.currency" :accounts="accounts" :cash-accounts="cashAccounts" />
         <div v-show="reportsView === 'statements'">
@@ -2110,6 +2116,7 @@ function getApiError(error: unknown, fallback: string): string {
           <label>Report<select v-model="reportType"><option value="trial_balance">Trial balance</option><option value="profit_loss">Profit and loss</option><option value="balance_sheet">Balance sheet</option><option value="vat_summary">VAT summary</option><option value="receivable_aging">Customer aging</option><option value="payable_aging">Supplier aging</option></select></label>
           <label v-if="reportType !== 'receivable_aging' && reportType !== 'payable_aging'">From<input v-model="reportFrom" type="date" required /></label>
           <label>{{ reportType === 'receivable_aging' || reportType === 'payable_aging' ? 'As of' : 'To' }}<input v-model="reportTo" type="date" required /></label>
+          <label v-if="reportType === 'receivable_aging' || reportType === 'payable_aging'">{{ reportType === 'receivable_aging' ? 'Customer' : 'Supplier' }}<select v-model="reportCounterpartyId"><option value="">All</option><option v-for="party in counterparties.filter((party) => party.type === (reportType === 'receivable_aging' ? 'customer' : 'supplier') || party.type === 'both')" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
           <button class="primary-button" type="submit" :disabled="reportLoading">{{ reportLoading ? 'Generating…' : 'Generate report' }}</button>
         </form>
         <p v-if="reportError" class="error-text" role="alert">{{ reportError }}</p>
