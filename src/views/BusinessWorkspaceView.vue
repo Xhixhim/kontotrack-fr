@@ -10,6 +10,7 @@ import { useMessages } from '@/lib/locale'
 import { workspaceMessages } from '@/locales/workspace'
 import api from '@/lib/api'
 import CreditNoteForm from '@/components/workspace/CreditNoteForm.vue'
+import ImportPanel from '@/components/workspace/ImportPanel.vue'
 import InvoiceEmailForm from '@/components/workspace/InvoiceEmailForm.vue'
 import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
@@ -1694,6 +1695,11 @@ async function createCounterparty(): Promise<void> {
   }
 }
 
+async function refreshCounterparties(): Promise<void> {
+  const response = await api.get<{ data: Counterparty[] }>(`/api/v1/businesses/${businessId}/counterparties`)
+  counterparties.value = response.data.data
+}
+
 async function refreshInventoryOverview(): Promise<void> {
   const response = await api.get<{ data: { items: InventoryItem[]; warehouses: Warehouse[]; movements: StockMovement[] } }>(`/api/v1/businesses/${businessId}/inventory`)
   inventoryItems.value = response.data.data.items
@@ -2323,6 +2329,7 @@ function getApiError(error: unknown, fallback: string): string {
             <button class="primary-button" type="button" @click="showInventoryItemForm = !showInventoryItemForm">{{ showInventoryItemForm ? 'Cancel item' : 'Add item' }}</button>
           </div>
         </div>
+        <ImportPanel v-if="canEditBookkeeping" :business-id="businessId" type="inventory-items" @imported="refreshInventoryOverview" />
         <form v-if="showInventoryItemForm" class="entry-form compact-form" @submit.prevent="createInventoryItem">
           <h3>New inventory item</h3>
           <div class="fields-grid">
@@ -2518,6 +2525,7 @@ function getApiError(error: unknown, fallback: string): string {
           <div><p class="eyebrow">People you work with</p><h2>Clients & suppliers</h2></div>
           <button v-if="canEditBookkeeping" class="primary-button" @click="toggleCounterpartyForm">{{ showCounterpartyForm ? 'Cancel' : 'Add contact' }}</button>
         </div>
+        <ImportPanel v-if="canEditBookkeeping" :business-id="businessId" type="counterparties" @imported="refreshCounterparties" />
         <form v-if="showCounterpartyForm" class="entry-form compact-form" @submit.prevent="createCounterparty">
           <h3>{{ editingCounterpartyId === null ? 'Add a client or supplier' : 'Edit contact' }}</h3>
           <p v-if="formError" class="error-text" role="alert">{{ formError }}</p>
