@@ -56,7 +56,7 @@ const sq: WorkspaceMessages = {
   nav: {
     overview: 'Paneli', customers: 'Klientët', suppliers: 'Furnitorët', sales: 'Shitjet', purchases: 'Blerjet', cash: 'Arka', bank: 'Banka',
     stock: 'Stoku', payroll: 'Punëtorët & Pagat', ledger: 'Kontabiliteti', vat: 'TVSH & Tatimet', assets: 'Asetet', documents: 'Dokumentet',
-    reports: 'Raportet', tasks: 'Detyrat & Afatet', controls: 'Kontrollet', team: 'Përdoruesit & Siguria', profile: 'Konfigurimet',
+    reports: 'Raportet', tasks: 'Detyrat & Afatet', controls: 'Kontrollet', assistant: 'Asistenti', team: 'Përdoruesit & Siguria', profile: 'Konfigurimet',
   },
   groups: { operations: 'Operacionet', accounting: 'Kontabiliteti', reporting: 'Raportimi', administration: 'Administrimi' },
   allBusinesses: 'Të gjitha bizneset',
@@ -123,7 +123,7 @@ const en: WorkspaceMessages = {
   nav: {
     overview: 'Dashboard', customers: 'Customers', suppliers: 'Suppliers', sales: 'Sales', purchases: 'Purchases', cash: 'Cash', bank: 'Bank',
     stock: 'Stock', payroll: 'Employees & Payroll', ledger: 'Ledger', vat: 'VAT & Taxes', assets: 'Fixed assets', documents: 'Documents',
-    reports: 'Reports', tasks: 'Tasks & Deadlines', controls: 'Controls', team: 'Users & Security', profile: 'Settings',
+    reports: 'Reports', tasks: 'Tasks & Deadlines', controls: 'Controls', assistant: 'Assistant', team: 'Users & Security', profile: 'Settings',
   },
   groups: { operations: 'Operations', accounting: 'Accounting', reporting: 'Reporting', administration: 'Administration' },
   allBusinesses: 'All businesses',
