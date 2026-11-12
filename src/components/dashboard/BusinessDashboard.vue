@@ -34,10 +34,12 @@ const props = defineProps<{
   loading: boolean
   error: string
   period: { year: number; month: number }
+  units: Array<{ id: number; name: string }>
+  unitId: string
   canViewHistory: boolean
   canEdit: boolean
 }>()
-const emit = defineEmits<{ navigate: [key: NavKey]; retry: []; newInvoice: []; upload: [] }>()
+const emit = defineEmits<{ navigate: [key: NavKey]; retry: []; newInvoice: []; upload: []; selectUnit: [unitId: string] }>()
 const m = useMessages(workspaceMessages)
 
 const tasks = ref<DashboardTask[]>([])
@@ -185,6 +187,13 @@ function activityTime(iso: string): string {
         <h1 class="kt-heading-5">{{ m.dashboard.title }}</h1>
         <p class="kt-body-6 kt-second">{{ m.dashboard.subtitle(periodLabel, asOf) }}</p>
       </div>
+      <label v-if="units.length" class="unit-filter kt-caption-1">
+        <span>{{ m.dashboard.unit }}</span>
+        <select class="kt-input" :value="unitId" :title="m.dashboard.unitHint" @change="emit('selectUnit', ($event.target as HTMLSelectElement).value)">
+          <option value="">{{ m.dashboard.wholeBusiness }}</option>
+          <option v-for="unit in units" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option>
+        </select>
+      </label>
       <div v-if="canEdit" class="actions">
         <button type="button" class="kt-btn kt-btn--secondary" @click="emit('upload')"><KtIcon name="upload-simple" :size="16" />{{ m.dashboard.uploadDocument }}</button>
         <button type="button" class="kt-btn kt-btn--primary" @click="emit('newInvoice')"><KtIcon name="plus" :size="16" />{{ m.dashboard.newInvoice }}</button>
@@ -311,6 +320,8 @@ function activityTime(iso: string): string {
 .page-header { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--kt-s-200); }
 .title-block { display: flex; flex: 1; min-width: 240px; flex-direction: column; gap: var(--kt-s-25); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--kt-s-75); }
+.unit-filter { display: flex; align-items: center; gap: var(--kt-s-75); color: var(--kt-text-2); }
+.unit-filter .kt-input { width: auto; min-width: 160px; }
 .grow { flex: 1; min-width: 0; }
 .block { display: block; }
 .nowrap { white-space: nowrap; }

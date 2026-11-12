@@ -32,6 +32,9 @@ export interface WorkspaceMessages {
     subtitle: (period: string, asOf: string) => string
     newInvoice: string
     uploadDocument: string
+    unit: string
+    wholeBusiness: string
+    unitHint: string
     kpi: {
       revenue: string; expenses: string; result: string; vat: string; cash: string; bank: string; payroll: string; stock: string
       revenueNote: string; expensesNote: string; resultProfit: string; resultLoss: string; vatPayable: string; vatCredit: string
@@ -74,6 +77,9 @@ const sq: WorkspaceMessages = {
     subtitle: (period, asOf) => `${period} · të dhënat deri më ${asOf}`,
     newInvoice: 'Faturë e re',
     uploadDocument: 'Ngarko dokument',
+    unit: 'Njësia',
+    wholeBusiness: 'I gjithë biznesi',
+    unitHint: 'Njësia ngushton të hyrat, shpenzimet, rezultatin dhe TVSH-në. Arka, banka dhe borxhet mbeten për gjithë biznesin.',
     kpi: {
       revenue: 'Të hyrat', expenses: 'Shpenzimet', result: 'Rezultati', vat: 'TVSH e faturave', cash: 'Arka', bank: 'Banka', payroll: 'Pagat', stock: 'Vlera e stokut',
       revenueNote: 'regjistrime të postuara', expensesNote: 'regjistrime të postuara', resultProfit: 'fitim i periudhës', resultLoss: 'humbje e periudhës',
@@ -138,6 +144,9 @@ const en: WorkspaceMessages = {
     subtitle: (period, asOf) => `${period} · data up to ${asOf}`,
     newInvoice: 'New invoice',
     uploadDocument: 'Upload document',
+    unit: 'Unit',
+    wholeBusiness: 'Whole business',
+    unitHint: 'A unit narrows revenue, expenses, result and VAT. Cash, bank and debts stay for the whole business.',
     kpi: {
       revenue: 'Revenue', expenses: 'Expenses', result: 'Result', vat: 'Invoice VAT', cash: 'Cash', bank: 'Bank', payroll: 'Payroll', stock: 'Stock value',
       revenueNote: 'posted entries', expensesNote: 'posted entries', resultProfit: 'profit for the period', resultLoss: 'loss for the period',

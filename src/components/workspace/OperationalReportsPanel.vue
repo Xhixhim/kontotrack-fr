@@ -15,6 +15,7 @@ const props = defineProps<{
   currency: string
   counterparties: Array<{ id: number; name: string }>
   warehouses: Array<{ id: number; name: string }>
+  units: Array<{ id: number; name: string }>
   canViewPayroll: boolean
 }>()
 
@@ -30,6 +31,8 @@ const m = useMessages({
     byCounterparty: 'Klientit / furnitorit',
     counterparty: 'Klienti / furnitori',
     all: 'Të gjithë',
+    unit: 'Njësia',
+    wholeBusiness: 'I gjithë biznesi',
     warehouse: 'Depoja',
     allWarehouses: 'Të gjitha depot',
     category: 'Kategoria',
@@ -59,6 +62,8 @@ const m = useMessages({
     byCounterparty: 'Customer / supplier',
     counterparty: 'Customer / supplier',
     all: 'All',
+    unit: 'Unit',
+    wholeBusiness: 'Whole business',
     warehouse: 'Warehouse',
     allWarehouses: 'All warehouses',
     category: 'Category',
@@ -86,6 +91,7 @@ const to = ref(todayIsoDate())
 const groupBy = ref<'month' | 'counterparty'>('month')
 const counterpartyId = ref('')
 const warehouseId = ref('')
+const unitId = ref('')
 const category = ref('')
 const table = ref<ReportTable | null>(null)
 const shownType = ref<ReportType | null>(null)
@@ -99,6 +105,7 @@ function params(): Record<string, string> {
   if (reportType.value === 'turnover') {
     query.group_by = groupBy.value
     if (counterpartyId.value) query.counterparty_id = counterpartyId.value
+    if (unitId.value) query.business_unit_id = unitId.value
   }
   if (reportType.value === 'stock' && warehouseId.value) query.warehouse_id = warehouseId.value
   if (reportType.value === 'fixed_assets' && category.value) query.category = category.value
@@ -151,6 +158,7 @@ function printReport(): void {
       <template v-if="reportType === 'turnover'">
         <label>{{ m.groupBy }}<select v-model="groupBy"><option value="month">{{ m.byMonth }}</option><option value="counterparty">{{ m.byCounterparty }}</option></select></label>
         <label>{{ m.counterparty }}<select v-model="counterpartyId"><option value="">{{ m.all }}</option><option v-for="party in counterparties" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
+        <label v-if="units.length">{{ m.unit }}<select v-model="unitId"><option value="">{{ m.wholeBusiness }}</option><option v-for="unit in units" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
       </template>
       <label v-if="reportType === 'stock'">{{ m.warehouse }}<select v-model="warehouseId"><option value="">{{ m.allWarehouses }}</option><option v-for="warehouse in warehouses" :key="warehouse.id" :value="String(warehouse.id)">{{ warehouse.name }}</option></select></label>
       <label v-if="reportType === 'fixed_assets'">{{ m.category }}<input v-model.trim="category" maxlength="120" :placeholder="m.allCategories" /></label>
