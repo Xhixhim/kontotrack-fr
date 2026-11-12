@@ -18,6 +18,7 @@ export type NavKey =
   | 'reports'
   | 'tasks'
   | 'controls'
+  | 'assistant'
   | 'team'
   | 'profile'
 
@@ -58,6 +59,7 @@ export const navigation: { group: NavGroup | null; items: NavItem[] }[] = [
       { key: 'reports', icon: 'chart-bar' },
       { key: 'tasks', icon: 'calendar-check' },
       { key: 'controls', icon: 'shield-check' },
+      { key: 'assistant', icon: 'sparkle' },
     ],
   },
   {

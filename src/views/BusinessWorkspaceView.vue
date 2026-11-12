@@ -16,6 +16,7 @@ import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
 import OperationalReportsPanel from '@/components/workspace/OperationalReportsPanel.vue'
+import AssistantPanel from '@/components/workspace/AssistantPanel.vue'
 import AtkFilingsPanel from '@/components/workspace/AtkFilingsPanel.vue'
 import BankLineCategorizer, { type BankCategory } from '@/components/workspace/BankLineCategorizer.vue'
 import BankReconciliationPanel from '@/components/workspace/BankReconciliationPanel.vue'
@@ -524,7 +525,7 @@ const reportCounterpartyFilter = computed(() => ({
 }))
 const reportLoading = ref(false)
 const reportError = ref('')
-const activeSection = ref<'overview' | 'profile' | 'invoices' | 'inventory' | 'counterparties' | 'money' | 'payroll' | 'assets' | 'documents' | 'tasks' | 'ledger' | 'reports' | 'team'>('overview')
+const activeSection = ref<'overview' | 'profile' | 'invoices' | 'inventory' | 'counterparties' | 'money' | 'payroll' | 'assets' | 'documents' | 'tasks' | 'ledger' | 'reports' | 'team' | 'assistant'>('overview')
 const activePayrollSection = ref<'employees' | 'runs'>('employees')
 const employees = ref<Employee[]>([])
 const payrollRuns = ref<PayrollRun[]>([])
@@ -653,7 +654,9 @@ const isNarrow = ref(narrowQuery.matches)
 const onNarrowChange = (event: MediaQueryListEvent) => (isNarrow.value = event.matches)
 narrowQuery.addEventListener('change', onNarrowChange)
 onBeforeUnmount(() => narrowQuery.removeEventListener('change', onNarrowChange))
-const hiddenNavItems = computed<NavKey[]>(() => [...(canViewPayroll.value ? [] : ['payroll' as const]), ...(business.value?.role === 'owner' ? [] : ['team' as const])])
+// The assistant is an optional server feature; its menu entry only shows when the operator switched it on.
+const assistantEnabled = ref(false)
+const hiddenNavItems = computed<NavKey[]>(() => [...(canViewPayroll.value ? [] : ['payroll' as const]), ...(business.value?.role === 'owner' ? [] : ['team' as const]), ...(assistantEnabled.value ? [] : ['assistant' as const])])
 const navBadges = computed<Partial<Record<NavKey, number>>>(() => (controlReport.value?.summary.critical ? { controls: controlReport.value.summary.critical } : {}))
 
 function readCollapsed(): boolean {
@@ -808,6 +811,7 @@ async function loadWorkspace(): Promise<void> {
     stockMovements.value = inventoryResponse.data.data.movements
     setPostingAccounts(postingAccountsResponse.data.data)
     await loadUnits()
+    void loadFeatures()
     await loadDashboardSummary()
 
     if (!business.value) {
@@ -817,6 +821,15 @@ async function loadWorkspace(): Promise<void> {
     pageError.value = 'We could not load this business workspace.'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadFeatures(): Promise<void> {
+  try {
+    const response = await api.get<{ data: { assistant: boolean } }>('/api/v1/features')
+    assistantEnabled.value = response.data.data.assistant
+  } catch {
+    assistantEnabled.value = false
   }
 }
 
@@ -2705,6 +2718,8 @@ function getApiError(error: unknown, fallback: string): string {
       </section>
 
       <TeamPanel v-else-if="activeSection === 'team' && business.role === 'owner'" :business-id="businessId" />
+
+      <AssistantPanel v-else-if="activeSection === 'assistant' && assistantEnabled" :business-id="businessId" />
 
       <section v-else-if="activeSection === 'ledger'" class="content-panel">
         <div class="panel-heading">
