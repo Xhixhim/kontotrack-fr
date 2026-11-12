@@ -23,6 +23,7 @@ import { downloadFromApi } from '@/lib/download'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
 import TasksPanel from '@/components/workspace/TasksPanel.vue'
 import TeamPanel from '@/components/workspace/TeamPanel.vue'
+import BusinessUnitsPanel, { type BusinessUnit } from '@/components/workspace/BusinessUnitsPanel.vue'
 
 interface Business {
   id: number
@@ -467,6 +468,9 @@ const reconciliationSelections = ref<Record<number, string>>({})
 const payments = ref<Payment[]>([])
 const inventoryItems = ref<InventoryItem[]>([])
 const warehouses = ref<Warehouse[]>([])
+const units = ref<BusinessUnit[]>([])
+const activeUnits = computed(() => units.value.filter((unit) => unit.is_active))
+const dashboardUnitId = ref('')
 const stockMovements = ref<StockMovement[]>([])
 const showInventoryItemForm = ref(false)
 const showWarehouseForm = ref(false)
@@ -509,8 +513,13 @@ const ledgerFinancialReport = computed(() => financialReport.value && isLedgerFi
 const reportFrom = ref(`${todayIsoDate().slice(0, 7)}-01`)
 const reportTo = ref(todayIsoDate())
 const reportCounterpartyId = ref('')
+const reportUnitId = ref('')
 // Ageing reports can be narrowed to one customer or supplier.
-const reportCounterpartyFilter = computed(() => (['receivable_aging', 'payable_aging'].includes(reportType.value) && reportCounterpartyId.value ? { counterparty_id: reportCounterpartyId.value } : {}))
+const reportCounterpartyFilter = computed(() => ({
+  ...(['receivable_aging', 'payable_aging'].includes(reportType.value) && reportCounterpartyId.value ? { counterparty_id: reportCounterpartyId.value } : {}),
+  // Movement reports can be narrowed to one unit; balances and VAT stay for the whole business.
+  ...(['trial_balance', 'profit_loss'].includes(reportType.value) && reportUnitId.value ? { business_unit_id: reportUnitId.value } : {}),
+}))
 const reportLoading = ref(false)
 const reportError = ref('')
 const activeSection = ref<'overview' | 'profile' | 'invoices' | 'inventory' | 'counterparties' | 'money' | 'payroll' | 'assets' | 'documents' | 'tasks' | 'ledger' | 'reports' | 'team'>('overview')
@@ -566,6 +575,7 @@ const canViewPayroll = computed(() => business.value?.abilities?.view_payroll ==
 const canUploadDocuments = computed(() => business.value?.abilities?.upload_documents === true)
 const invoiceForm = ref({
   kind: 'sale' as 'sale' | 'purchase',
+  business_unit_id: '',
   counterparty_id: '',
   invoice_number: '',
   issued_on: todayIsoDate(),
@@ -577,7 +587,7 @@ const invoiceForm = ref({
 const lineDrafts = ref<InvoiceLineDraft[]>([{ description: '', quantity: '1', unit: '', unit_price: '0.00', discount_amount: '0.00', vat_code: '', inventory_item_id: '', warehouse_id: '' }])
 const accountForm = ref({ code: '', name: '', account_type: 'asset', normal_balance: 'debit', parent_id: '' })
 const periodForm = ref({ name: '', starts_on: '', ends_on: '' })
-const journalForm = ref({ accounting_period_id: '', entry_date: todayIsoDate(), reference: '', description: '' })
+const journalForm = ref({ accounting_period_id: '', business_unit_id: '', entry_date: todayIsoDate(), reference: '', description: '' })
 const journalLineDrafts = ref<JournalLineDraft[]>([
   { account_id: '', debit: '0.00', credit: '0.00', description: '' },
   { account_id: '', debit: '0.00', credit: '0.00', description: '' },
@@ -795,6 +805,7 @@ async function loadWorkspace(): Promise<void> {
     warehouses.value = inventoryResponse.data.data.warehouses
     stockMovements.value = inventoryResponse.data.data.movements
     setPostingAccounts(postingAccountsResponse.data.data)
+    await loadUnits()
     await loadDashboardSummary()
 
     if (!business.value) {
@@ -807,13 +818,28 @@ async function loadWorkspace(): Promise<void> {
   }
 }
 
+async function loadUnits(): Promise<void> {
+  try {
+    const response = await api.get<{ data: BusinessUnit[] }>(`/api/v1/businesses/${businessId}/units`)
+    units.value = response.data.data
+  } catch {
+    // Units are optional; without them the workspace simply shows no unit pickers.
+    units.value = []
+  }
+}
+
+function selectDashboardUnit(unitId: string): void {
+  dashboardUnitId.value = unitId
+  void loadDashboardSummary()
+}
+
 async function loadDashboardSummary(): Promise<void> {
   dashboardLoading.value = true
   dashboardError.value = ''
 
   try {
     const response = await api.get<{ data: BusinessDashboardSummary }>(`/api/v1/businesses/${businessId}/dashboard`, {
-      params: { from: dashboardFrom.value, to: dashboardTo.value },
+      params: { from: dashboardFrom.value, to: dashboardTo.value, ...(dashboardUnitId.value ? { business_unit_id: dashboardUnitId.value } : {}) },
     })
     dashboardSummary.value = response.data.data
     const controlsResponse = await api.get<{ data: ControlReport }>(`/api/v1/businesses/${businessId}/controls`)
@@ -1343,6 +1369,7 @@ async function createJournalDraft(): Promise<void> {
     const response = await api.post<{ data: JournalEntry }>(`/api/v1/businesses/${businessId}/journal-entries`, {
       ...journalForm.value,
       accounting_period_id: Number(journalForm.value.accounting_period_id),
+      business_unit_id: journalForm.value.business_unit_id ? Number(journalForm.value.business_unit_id) : null,
       lines: journalLineDrafts.value.map((line) => ({
         ...line,
         account_id: Number(line.account_id),
@@ -1351,7 +1378,7 @@ async function createJournalDraft(): Promise<void> {
       })),
     })
     journalEntries.value = [response.data.data, ...journalEntries.value]
-    journalForm.value = { accounting_period_id: '', entry_date: todayIsoDate(), reference: '', description: '' }
+    journalForm.value = { accounting_period_id: '', business_unit_id: '', entry_date: todayIsoDate(), reference: '', description: '' }
     journalLineDrafts.value = [
       { account_id: '', debit: '0.00', credit: '0.00', description: '' },
       { account_id: '', debit: '0.00', credit: '0.00', description: '' },
@@ -1766,6 +1793,7 @@ async function createInvoiceDraft(): Promise<void> {
       due_on: invoiceForm.value.due_on || null,
       payment_method: invoiceForm.value.payment_method || null,
       counterparty_id: Number(invoiceForm.value.counterparty_id),
+      business_unit_id: invoiceForm.value.business_unit_id ? Number(invoiceForm.value.business_unit_id) : null,
       document_id: invoiceForm.value.document_id ? Number(invoiceForm.value.document_id) : null,
       lines: lineDrafts.value.map((line) => ({
         ...line,
@@ -1777,6 +1805,7 @@ async function createInvoiceDraft(): Promise<void> {
     showInvoiceForm.value = false
     invoiceForm.value = {
       kind: invoiceKind.value,
+      business_unit_id: '',
       counterparty_id: '',
       invoice_number: '',
       issued_on: todayIsoDate(),
@@ -2079,10 +2108,13 @@ function getApiError(error: unknown, fallback: string): string {
         :loading="dashboardLoading"
         :error="dashboardError"
         :period="{ year: periodYear, month: periodMonth }"
+        :units="units"
+        :unit-id="dashboardUnitId"
         :can-view-history="canViewHistory"
         :can-edit="canEditBookkeeping"
         @navigate="goTo"
         @retry="loadDashboardSummary"
+        @select-unit="selectDashboardUnit"
         @new-invoice="startNewInvoice"
         @upload="goTo('documents')"
       />
@@ -2103,9 +2135,9 @@ function getApiError(error: unknown, fallback: string): string {
           <button :class="{ active: reportsView === 'operations' }" @click="reportsView = 'operations'">Turnover, stock, payroll, assets</button>
           <button :class="{ active: reportsView === 'atk' }" @click="reportsView = 'atk'">ATK · VAT books</button>
         </nav>
-        <OperationalReportsPanel v-if="reportsView === 'operations'" :business-id="businessId" :currency="business.currency" :counterparties="counterparties" :warehouses="warehouses" :can-view-payroll="canViewPayroll" />
+        <OperationalReportsPanel v-if="reportsView === 'operations'" :business-id="businessId" :currency="business.currency" :counterparties="counterparties" :warehouses="warehouses" :units="units" :can-view-payroll="canViewPayroll" />
         <AtkFilingsPanel v-if="reportsView === 'atk'" :business-id="businessId" :currency="business.currency" :vat-registered="business.vat_status === 'registered'" />
-        <LedgerReportsPanel v-if="reportsView === 'ledger'" :business-id="businessId" :business-name="business.legal_name" :business-nui="business.nui" :currency="business.currency" :accounts="accounts" :cash-accounts="cashAccounts" />
+        <LedgerReportsPanel v-if="reportsView === 'ledger'" :business-id="businessId" :business-name="business.legal_name" :business-nui="business.nui" :currency="business.currency" :accounts="accounts" :cash-accounts="cashAccounts" :units="units" />
         <div v-show="reportsView === 'statements'">
         <div v-if="financialReport" class="print-only report-print-heading">
           <strong>{{ reportTypeLabels[financialReport.type] }}</strong>
@@ -2117,6 +2149,7 @@ function getApiError(error: unknown, fallback: string): string {
           <label v-if="reportType !== 'receivable_aging' && reportType !== 'payable_aging'">From<input v-model="reportFrom" type="date" required /></label>
           <label>{{ reportType === 'receivable_aging' || reportType === 'payable_aging' ? 'As of' : 'To' }}<input v-model="reportTo" type="date" required /></label>
           <label v-if="reportType === 'receivable_aging' || reportType === 'payable_aging'">{{ reportType === 'receivable_aging' ? 'Customer' : 'Supplier' }}<select v-model="reportCounterpartyId"><option value="">All</option><option v-for="party in counterparties.filter((party) => party.type === (reportType === 'receivable_aging' ? 'customer' : 'supplier') || party.type === 'both')" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
+          <label v-if="units.length && (reportType === 'trial_balance' || reportType === 'profit_loss')">Unit<select v-model="reportUnitId"><option value="">Whole business</option><option v-for="unit in units" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
           <button class="primary-button" type="submit" :disabled="reportLoading">{{ reportLoading ? 'Generating…' : 'Generate report' }}</button>
         </form>
         <p v-if="reportError" class="error-text" role="alert">{{ reportError }}</p>
@@ -2190,6 +2223,7 @@ function getApiError(error: unknown, fallback: string): string {
             </label>
             <label>Invoice date<input v-model="invoiceForm.issued_on" type="date" required @change="loadVatCodes" /></label>
             <label>Due date<input v-model="invoiceForm.due_on" type="date" /></label>
+            <label v-if="activeUnits.length">Unit <span>(optional)</span><select v-model="invoiceForm.business_unit_id"><option value="">No unit</option><option v-for="unit in activeUnits" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
             <label>Payment method <span>(optional)</span><select v-model="invoiceForm.payment_method"><option value="">Not set</option><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select></label>
             <label v-if="invoiceKind === 'purchase'">Supplier bill file<input ref="billFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" @change="billFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /><span>PDF or photo, up to 20 MB</span></label>
             <label v-if="invoiceKind === 'purchase'">Upload the supplier bill<input ref="billFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" @change="selectBillFile" /></label>
@@ -2362,6 +2396,7 @@ function getApiError(error: unknown, fallback: string): string {
           </fieldset>
           <div v-if="canEditBookkeeping" class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save details' }}</button></div>
         </form>
+        <BusinessUnitsPanel v-model:units="units" :business-id="businessId" :can-edit="canEditBookkeeping" />
         <section v-if="canViewHistory" class="history-panel">
           <h3>Change history</h3>
           <ul class="audit-list">
@@ -2683,6 +2718,7 @@ function getApiError(error: unknown, fallback: string): string {
               <label>Accounting period<select v-model="journalForm.accounting_period_id" required><option disabled value="">Choose a period</option><option v-for="period in openPeriods" :key="period.id" :value="String(period.id)">{{ period.name }} · {{ formatDate(period.starts_on) }} – {{ formatDate(period.ends_on) }}</option></select></label>
               <label>Entry date<input v-model="journalForm.entry_date" type="date" required /></label>
               <label>Reference <span>(optional)</span><input v-model.trim="journalForm.reference" maxlength="100" /></label>
+              <label v-if="activeUnits.length">Unit <span>(optional)</span><select v-model="journalForm.business_unit_id"><option value="">No unit</option><option v-for="unit in activeUnits" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
             </div>
             <div class="lines-heading"><h4>Debit and credit lines</h4><button class="text-button" type="button" @click="addJournalLine">＋ Add line</button></div>
             <div v-for="(line, index) in journalLineDrafts" :key="index" class="journal-line-row">

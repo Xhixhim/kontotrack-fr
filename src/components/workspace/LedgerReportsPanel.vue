@@ -16,11 +16,13 @@ const props = defineProps<{
   currency: string
   accounts: Array<{ id: number; code: string; name: string }>
   cashAccounts: Array<{ id: number; name: string }>
+  units: Array<{ id: number; name: string }>
 }>()
 
 const reportType = ref<'general_ledger' | 'cash_book'>('general_ledger')
 const accountId = ref('')
 const cashAccountId = ref('')
+const unitId = ref('')
 const from = ref(`${todayIsoDate().slice(0, 4)}-01-01`)
 const to = ref(todayIsoDate())
 const cards = ref<AccountCard[] | null>(null)
@@ -41,6 +43,7 @@ async function generate(): Promise<void> {
   try {
     const params: Record<string, string> = { type: reportType.value, from: from.value, to: to.value }
     if (reportType.value === 'general_ledger' && accountId.value) params.account_id = accountId.value
+    if (reportType.value === 'general_ledger' && unitId.value) params.business_unit_id = unitId.value
     if (reportType.value === 'cash_book') params.cash_account_id = cashAccountId.value
     const response = await api.get<{ data: { accounts?: AccountCard[] } & Partial<CashBook> }>(`/api/v1/businesses/${props.businessId}/reports/financial`, { params })
 
@@ -65,6 +68,7 @@ async function download(format: 'xlsx' | 'pdf'): Promise<void> {
   try {
     const params: Record<string, string> = { type: reportType.value, from: from.value, to: to.value, format }
     if (reportType.value === 'general_ledger' && accountId.value) params.account_id = accountId.value
+    if (reportType.value === 'general_ledger' && unitId.value) params.business_unit_id = unitId.value
     if (reportType.value === 'cash_book') params.cash_account_id = cashAccountId.value
     await downloadFromApi(`/api/v1/businesses/${props.businessId}/reports/financial/export`, params, `${reportType.value}.${format}`)
   } catch (caught: unknown) {
@@ -101,6 +105,7 @@ function exportCsv(): void {
   <div>
     <form class="report-filters" @submit.prevent="generate">
       <label>Report<select v-model="reportType"><option value="general_ledger">Account cards (general ledger)</option><option value="cash_book">Cash book</option></select></label>
+      <label v-if="reportType === 'general_ledger' && units.length">Unit<select v-model="unitId"><option value="">Whole business</option><option v-for="unit in units" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
       <label v-if="reportType === 'general_ledger'">Account<select v-model="accountId"><option value="">All accounts with activity</option><option v-for="account in accounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
       <label v-else>Cash account<select v-model="cashAccountId" required><option disabled value="">Choose cash account</option><option v-for="cash in cashAccounts" :key="cash.id" :value="String(cash.id)">{{ cash.name }}</option></select></label>
       <label>From<input v-model="from" type="date" required /></label>
