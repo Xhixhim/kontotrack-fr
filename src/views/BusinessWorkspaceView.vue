@@ -2418,7 +2418,7 @@ function getApiError(error: unknown, fallback: string): string {
       </section>
 
       <section v-else-if="activeSection === 'documents'" class="content-panel">
-        <DocumentsPanel :business-id="businessId" :can-manage="canEditBookkeeping" :can-upload="canUploadDocuments" :counterparties="counterparties" />
+        <DocumentsPanel :business-id="businessId" :can-manage="canEditBookkeeping" :can-upload="canUploadDocuments" :can-view-payroll="canViewPayroll" :counterparties="counterparties" />
       </section>
 
       <section v-else-if="activeSection === 'tasks'" class="content-panel">

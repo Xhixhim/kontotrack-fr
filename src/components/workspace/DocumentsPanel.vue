@@ -10,6 +10,8 @@ interface ArchivedDocument {
   document_date: string | null
   notes: string | null
   counterparty: { id: number; name: string } | null
+  employee?: { id: number; name: string } | null
+  payroll_run?: { id: number; period: string } | null
   review_status: 'pending' | 'reviewed'
   extracted_data: Record<string, string | null> | null
   created_at: string
@@ -28,20 +30,24 @@ interface DocumentRequest {
   document: { id: number; original_name: string } | null
 }
 
-const props = defineProps<{ businessId: number; canManage: boolean; canUpload: boolean; counterparties: Array<{ id: number; name: string }> }>()
+const props = defineProps<{ businessId: number; canManage: boolean; canUpload: boolean; canViewPayroll: boolean; counterparties: Array<{ id: number; name: string }> }>()
+
+// Contracts and payslips can be filed with an employee or a payroll run; only members who may see payroll get these lists.
+const employees = ref<Array<{ id: number; first_name: string; last_name: string }>>([])
+const payrollRuns = ref<Array<{ id: number; period_year: number; period_month: number }>>([])
 
 const categories = ['invoice', 'receipt', 'contract', 'bank_statement', 'payroll', 'tax_filing', 'certificate', 'authorization', 'lease', 'other']
 const section = ref<'archive' | 'requests'>('archive')
 const documents = ref<ArchivedDocument[]>([])
 const requests = ref<DocumentRequest[]>([])
-const filters = ref({ category: '', counterparty_id: '', review_status: '', from: '', to: '' })
+const filters = ref({ category: '', counterparty_id: '', employee_id: '', review_status: '', from: '', to: '' })
 const error = ref('')
 const saving = ref(false)
 const showUpload = ref(false)
-const uploadForm = ref({ category: 'invoice', counterparty_id: '', document_date: todayIsoDate(), notes: '' })
+const uploadForm = ref({ category: 'invoice', counterparty_id: '', employee_id: '', payroll_run_id: '', document_date: todayIsoDate(), notes: '' })
 const uploadFile = ref<File | null>(null)
 const editingDocument = ref<ArchivedDocument | null>(null)
-const editForm = ref({ category: 'other', counterparty_id: '', document_date: '', notes: '' })
+const editForm = ref({ category: 'other', counterparty_id: '', employee_id: '', payroll_run_id: '', document_date: '', notes: '' })
 const reviewingDocument = ref<ArchivedDocument | null>(null)
 const reviewForm = ref({ supplier_name: '', supplier_nui: '', document_number: '', document_date: '', net_amount: '', tax_amount: '', gross_amount: '' })
 const showRequestForm = ref(false)
@@ -65,6 +71,20 @@ async function loadDocuments(): Promise<void> {
   documents.value = response.data.data
 }
 
+async function loadPayrollLinks(): Promise<void> {
+  if (!props.canViewPayroll) return
+  const [employeeResponse, runResponse] = await Promise.all([
+    api.get<{ data: typeof employees.value }>(`/api/v1/businesses/${props.businessId}/employees`),
+    api.get<{ data: typeof payrollRuns.value }>(`/api/v1/businesses/${props.businessId}/payroll-runs`),
+  ])
+  employees.value = employeeResponse.data.data
+  payrollRuns.value = runResponse.data.data
+}
+
+function runLabel(run: { period_year: number; period_month: number }): string {
+  return `${String(run.period_month).padStart(2, '0')}.${run.period_year}`
+}
+
 async function loadRequests(): Promise<void> {
   const response = await api.get<{ data: DocumentRequest[] }>(`/api/v1/businesses/${props.businessId}/document-requests`)
   requests.value = response.data.data
@@ -83,11 +103,13 @@ async function run(action: () => Promise<void>, fallback: string): Promise<void>
   }
 }
 
-async function upload(file: File, attributes: { category: string; counterparty_id?: string; document_date?: string; notes?: string }): Promise<number> {
+async function upload(file: File, attributes: { category: string; counterparty_id?: string; employee_id?: string; payroll_run_id?: string; document_date?: string; notes?: string }): Promise<number> {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('category', attributes.category)
   if (attributes.counterparty_id) formData.append('counterparty_id', attributes.counterparty_id)
+  if (attributes.employee_id) formData.append('employee_id', attributes.employee_id)
+  if (attributes.payroll_run_id) formData.append('payroll_run_id', attributes.payroll_run_id)
   if (attributes.document_date) formData.append('document_date', attributes.document_date)
   if (attributes.notes) formData.append('notes', attributes.notes)
   const response = await api.post<{ data: { id: number } }>(`/api/v1/businesses/${props.businessId}/documents`, formData)
@@ -98,7 +120,7 @@ function submitUpload(): Promise<void> {
   return run(async () => {
     if (!uploadFile.value) throw new Error('Choose a file')
     await upload(uploadFile.value, uploadForm.value)
-    uploadForm.value = { category: 'invoice', counterparty_id: '', document_date: todayIsoDate(), notes: '' }
+    uploadForm.value = { category: 'invoice', counterparty_id: '', employee_id: '', payroll_run_id: '', document_date: todayIsoDate(), notes: '' }
     uploadFile.value = null
     showUpload.value = false
     await loadDocuments()
@@ -108,7 +130,7 @@ function submitUpload(): Promise<void> {
 function startEditing(document: ArchivedDocument): void {
   editingDocument.value = document
   reviewingDocument.value = null
-  editForm.value = { category: document.category, counterparty_id: document.counterparty ? String(document.counterparty.id) : '', document_date: document.document_date ?? '', notes: document.notes ?? '' }
+  editForm.value = { category: document.category, counterparty_id: document.counterparty ? String(document.counterparty.id) : '', employee_id: document.employee ? String(document.employee.id) : '', payroll_run_id: document.payroll_run ? String(document.payroll_run.id) : '', document_date: document.document_date ?? '', notes: document.notes ?? '' }
 }
 
 function saveDetails(document: ArchivedDocument): Promise<void> {
@@ -116,6 +138,7 @@ function saveDetails(document: ArchivedDocument): Promise<void> {
     await api.put(`/api/v1/businesses/${props.businessId}/documents/${document.id}`, {
       category: editForm.value.category,
       counterparty_id: editForm.value.counterparty_id ? Number(editForm.value.counterparty_id) : null,
+      ...(props.canViewPayroll ? { employee_id: editForm.value.employee_id ? Number(editForm.value.employee_id) : null, payroll_run_id: editForm.value.payroll_run_id ? Number(editForm.value.payroll_run_id) : null } : {}),
       document_date: nullableText(editForm.value.document_date),
       notes: nullableText(editForm.value.notes),
     })
@@ -189,7 +212,7 @@ function rejectRequest(request: DocumentRequest): Promise<void> {
   }, 'We could not send this document back.')
 }
 
-onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadRequests()]) }, 'We could not load documents.'))
+onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadRequests(), loadPayrollLinks()]) }, 'We could not load documents.'))
 </script>
 
 <template>
@@ -212,6 +235,8 @@ onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadReques
           <label>File<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" required @change="uploadFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
           <label>Category<select v-model="uploadForm.category"><option v-for="category in categories" :key="category" :value="category">{{ label(category) }}</option></select></label>
           <label>Client or supplier <span>(optional)</span><select v-model="uploadForm.counterparty_id"><option value="">None</option><option v-for="party in counterparties" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
+          <label v-if="canViewPayroll && employees.length">Employee <span>(optional)</span><select v-model="uploadForm.employee_id"><option value="">None</option><option v-for="employee in employees" :key="employee.id" :value="String(employee.id)">{{ employee.first_name }} {{ employee.last_name }}</option></select></label>
+          <label v-if="canViewPayroll && payrollRuns.length">Payroll month <span>(optional)</span><select v-model="uploadForm.payroll_run_id"><option value="">None</option><option v-for="payrollRun in payrollRuns" :key="payrollRun.id" :value="String(payrollRun.id)">{{ runLabel(payrollRun) }}</option></select></label>
           <label>Document date<input v-model="uploadForm.document_date" type="date" /></label>
           <label>Notes<input v-model.trim="uploadForm.notes" maxlength="2000" /></label>
         </div>
@@ -220,6 +245,7 @@ onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadReques
       <form class="report-filters" @submit.prevent="run(loadDocuments, 'We could not filter documents.')">
         <label>Category<select v-model="filters.category"><option value="">All</option><option v-for="category in categories" :key="category" :value="category">{{ label(category) }}</option></select></label>
         <label>Client or supplier<select v-model="filters.counterparty_id"><option value="">All</option><option v-for="party in counterparties" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
+        <label v-if="canViewPayroll && employees.length">Employee<select v-model="filters.employee_id"><option value="">All</option><option v-for="employee in employees" :key="employee.id" :value="String(employee.id)">{{ employee.first_name }} {{ employee.last_name }}</option></select></label>
         <label>Review<select v-model="filters.review_status"><option value="">All</option><option value="pending">Pending</option><option value="reviewed">Reviewed</option></select></label>
         <label>From<input v-model="filters.from" type="date" /></label>
         <label>To<input v-model="filters.to" type="date" /></label>
@@ -229,7 +255,7 @@ onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadReques
         <article v-for="document in documents" :key="document.id" class="contact-row">
           <div>
             <strong><a :href="downloadUrl(document)" target="_blank" rel="noopener">{{ document.original_name }}</a></strong>
-            <span>{{ label(document.category) }} · {{ formatDate(document.document_date ?? document.created_at) }}<template v-if="document.counterparty"> · {{ document.counterparty.name }}</template><template v-if="document.notes"> · {{ document.notes }}</template></span>
+            <span>{{ label(document.category) }} · {{ formatDate(document.document_date ?? document.created_at) }}<template v-if="document.counterparty"> · {{ document.counterparty.name }}</template><template v-if="document.employee"> · {{ document.employee.name }}</template><template v-if="document.payroll_run"> · Payroll {{ document.payroll_run.period }}</template><template v-if="document.notes"> · {{ document.notes }}</template></span>
             <span v-if="document.extracted_data?.document_number">No. {{ document.extracted_data.document_number }}<template v-if="document.extracted_data.gross_amount"> · total {{ document.extracted_data.gross_amount }}</template></span>
           </div>
           <span class="severity-chip" :class="document.review_status === 'reviewed' ? 'ok' : 'info'">{{ document.review_status }}</span>
@@ -240,6 +266,8 @@ onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadReques
           <form v-if="editingDocument?.id === document.id" class="entry-form inline-form" @submit.prevent="saveDetails(document)">
             <label>Category<select v-model="editForm.category"><option v-for="category in categories" :key="category" :value="category">{{ label(category) }}</option></select></label>
             <label>Client or supplier<select v-model="editForm.counterparty_id"><option value="">None</option><option v-for="party in counterparties" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
+            <label v-if="canViewPayroll && employees.length">Employee<select v-model="editForm.employee_id"><option value="">None</option><option v-for="employee in employees" :key="employee.id" :value="String(employee.id)">{{ employee.first_name }} {{ employee.last_name }}</option></select></label>
+            <label v-if="canViewPayroll && payrollRuns.length">Payroll month<select v-model="editForm.payroll_run_id"><option value="">None</option><option v-for="payrollRun in payrollRuns" :key="payrollRun.id" :value="String(payrollRun.id)">{{ runLabel(payrollRun) }}</option></select></label>
             <label>Date<input v-model="editForm.document_date" type="date" /></label>
             <label>Notes<input v-model.trim="editForm.notes" maxlength="2000" /></label>
             <div class="form-footer"><button class="text-button" type="button" @click="editingDocument = null">Cancel</button><button class="primary-button" type="submit" :disabled="saving">Save</button></div>
