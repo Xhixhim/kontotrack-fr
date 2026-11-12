@@ -305,7 +305,7 @@ async function sendMessage(): Promise<void> {
         <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
         <div class="form-grid">
           <label>Legal business name<input v-model.trim="form.legal_name" required maxlength="255" autocomplete="organization" /></label>
-          <label>NUI<input v-model.trim="form.nui" required maxlength="32" autocomplete="off" /></label>
+          <label>NUI<input v-model.trim="form.nui" required inputmode="numeric" pattern="\d{9}" maxlength="9" title="9 digits, as on the business registration certificate" autocomplete="off" /></label>
           <label>Trade name <span>(optional)</span><input v-model.trim="form.trade_name" maxlength="255" /></label>
           <label>Municipality <span>(optional)</span><input v-model.trim="form.municipality" maxlength="100" autocomplete="address-level2" /></label>
           <label>VAT status<select v-model="form.vat_status"><option value="unknown">Not set</option><option value="registered">VAT registered</option><option value="not_registered">Not VAT registered</option></select></label>

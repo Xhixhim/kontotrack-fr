@@ -77,6 +77,8 @@ export const checkTargets: Record<string, NavKey> = {
   duplicate_purchases: 'purchases',
   missing_nui: 'customers',
   duplicate_nui: 'customers',
+  counterparty_nui: 'customers',
+  identifier_format: 'customers',
   overdue_receivables: 'sales',
   overdue_payables: 'purchases',
   stale_drafts: 'sales',

@@ -2382,7 +2382,7 @@ function getApiError(error: unknown, fallback: string): string {
             <div class="fields-grid">
               <label>Legal name<input v-model.trim="businessForm.legal_name" required maxlength="255" /></label>
               <label>Trade name <span>(optional)</span><input v-model.trim="businessForm.trade_name" maxlength="255" /></label>
-              <label>NUI / fiscal number<input v-model.trim="businessForm.nui" required maxlength="32" /></label>
+              <label>NUI <span>(9 digits)</span><input v-model.trim="businessForm.nui" required inputmode="numeric" pattern="\d{9}" maxlength="9" title="9 digits, as on the business registration certificate" /></label>
               <label>Legal form<input v-model.trim="businessForm.legal_form" maxlength="40" placeholder="B.I., SH.P.K., …" /></label>
               <label>Owner<input v-model.trim="businessForm.owner_name" maxlength="255" /></label>
               <label>VAT status<select v-model="businessForm.vat_status"><option value="unknown">Not set</option><option value="registered">VAT registered</option><option value="not_registered">Not VAT registered</option></select></label>
@@ -2524,7 +2524,7 @@ function getApiError(error: unknown, fallback: string): string {
           <div class="fields-grid">
             <label>Type<select v-model="counterpartyForm.type"><option value="customer">Customer</option><option value="supplier">Supplier</option><option value="both">Both</option></select></label>
             <label>Name<input v-model.trim="counterpartyForm.name" required maxlength="255" /></label>
-            <label>NUI<input v-model.trim="counterpartyForm.nui" maxlength="32" /></label>
+            <label>NUI / fiscal or personal number <span>(optional)</span><input v-model.trim="counterpartyForm.nui" maxlength="32" title="Kosovo business: 9 digits. Individual: 10-digit personal number." /></label>
             <label>Email<input v-model.trim="counterpartyForm.email" type="email" maxlength="255" /></label>
             <label>Phone<input v-model.trim="counterpartyForm.phone" maxlength="40" /></label>
             <label>Address<input v-model.trim="counterpartyForm.address" maxlength="255" /></label>
