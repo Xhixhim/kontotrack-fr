@@ -8,7 +8,6 @@ export interface AuthMessages {
   showPassword: string
   hidePassword: string
   forgot: string
-  forgotHelp: string
   remember: string
   submit: string
   submitting: string
@@ -51,7 +50,6 @@ const sq: AuthMessages = {
   showPassword: 'Shfaq fjalëkalimin',
   hidePassword: 'Fshih fjalëkalimin',
   forgot: 'Ke harruar fjalëkalimin?',
-  forgotHelp: 'Llogaritë krijohen nga zyra e kontabilitetit. Kërkoji administratorit të zyrës të ta rivendosë fjalëkalimin.',
   remember: 'Më mbaj të kyçur në këtë pajisje',
   submit: 'Hyr',
   submitting: 'Po hyn…',
@@ -99,7 +97,6 @@ const en: AuthMessages = {
   showPassword: 'Show password',
   hidePassword: 'Hide password',
   forgot: 'Forgot password?',
-  forgotHelp: 'Accounts are created by your accounting office. Ask the office administrator to reset your password.',
   remember: 'Keep me signed in on this device',
   submit: 'Sign in',
   submitting: 'Signing in…',

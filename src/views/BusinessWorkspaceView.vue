@@ -20,6 +20,7 @@ import PeriodReopenPanel, { type ReopenRequest } from '@/components/workspace/Pe
 import { downloadFromApi } from '@/lib/download'
 import StockOperationsPanel from '@/components/workspace/StockOperationsPanel.vue'
 import TasksPanel from '@/components/workspace/TasksPanel.vue'
+import TeamPanel from '@/components/workspace/TeamPanel.vue'
 
 interface Business {
   id: number
@@ -37,6 +38,7 @@ interface Business {
   phone: string | null
   currency: string
   role: string | null
+  abilities?: { manage_bookkeeping: boolean; upload_documents: boolean; view_audit_trail: boolean; view_payroll: boolean; manage_members: boolean } | null
 }
 
 interface Employee {
@@ -115,14 +117,6 @@ interface AuditEntry {
   new_values: Record<string, unknown> | null
   user: { id: number; name: string } | null
   created_at: string
-}
-
-interface BusinessTeamMember {
-  id: number
-  name: string
-  email: string
-  role: string
-  status: 'active' | 'invited' | 'inactive'
 }
 
 interface Counterparty {
@@ -478,8 +472,6 @@ const stockMovementFileInput = ref<HTMLInputElement | null>(null)
 const inventoryItemForm = ref({ sku: '', barcode: '', name: '', description: '', unit: 'piece', purchase_price: '0.0000', sale_price: '0.0000', minimum_quantity: '0.0000', supplier_counterparty_id: '' })
 const warehouseForm = ref({ name: '', address: '', is_default: false })
 const stockMovementForm = ref({ inventory_item_id: '', warehouse_id: '', direction: 'in' as 'in' | 'out', movement_type: 'opening' as 'opening' | 'adjustment', quantity: '', unit_cost: '', document_id: '', occurred_on: todayIsoDate(), notes: '' })
-const teamMembers = ref<BusinessTeamMember[]>([])
-const teamForm = ref({ email: '', role: 'accountant' })
 const dashboardSummary = ref<BusinessDashboardSummary | null>(null)
 const dashboardLoading = ref(false)
 const controlReport = ref<ControlReport | null>(null)
@@ -559,8 +551,11 @@ const statementLoading = ref(false)
 const counterpartyHistory = ref<AuditEntry[]>([])
 const businessForm = ref({ legal_name: '', trade_name: '', nui: '', legal_form: '', owner_name: '', vat_status: 'unknown' as Business['vat_status'], municipality: '', address: '', activity_code: '', registered_at: '', email: '', phone: '' })
 const businessHistory = ref<AuditEntry[]>([])
-const canEditBookkeeping = computed(() => business.value?.role === 'owner' || business.value?.role === 'accountant')
-const canViewHistory = computed(() => ['owner', 'accountant', 'auditor'].includes(business.value?.role ?? ''))
+// What this member may do comes from the API: the role, minus anything the owner has taken away.
+const canEditBookkeeping = computed(() => business.value?.abilities?.manage_bookkeeping === true)
+const canViewHistory = computed(() => business.value?.abilities?.view_audit_trail === true)
+const canViewPayroll = computed(() => business.value?.abilities?.view_payroll === true)
+const canUploadDocuments = computed(() => business.value?.abilities?.upload_documents === true)
 const invoiceForm = ref({
   kind: 'sale' as 'sale' | 'purchase',
   counterparty_id: '',
@@ -638,7 +633,7 @@ const isNarrow = ref(narrowQuery.matches)
 const onNarrowChange = (event: MediaQueryListEvent) => (isNarrow.value = event.matches)
 narrowQuery.addEventListener('change', onNarrowChange)
 onBeforeUnmount(() => narrowQuery.removeEventListener('change', onNarrowChange))
-const hiddenNavItems = computed<NavKey[]>(() => [...(canViewHistory.value ? [] : ['payroll' as const]), ...(business.value?.role === 'owner' ? [] : ['team' as const])])
+const hiddenNavItems = computed<NavKey[]>(() => [...(canViewPayroll.value ? [] : ['payroll' as const]), ...(business.value?.role === 'owner' ? [] : ['team' as const])])
 const navBadges = computed<Partial<Record<NavKey, number>>>(() => (controlReport.value?.summary.critical ? { controls: controlReport.value.summary.critical } : {}))
 
 function readCollapsed(): boolean {
@@ -792,10 +787,6 @@ async function loadWorkspace(): Promise<void> {
     warehouses.value = inventoryResponse.data.data.warehouses
     stockMovements.value = inventoryResponse.data.data.movements
     setPostingAccounts(postingAccountsResponse.data.data)
-    if (business.value?.role === 'owner') {
-      const teamResponse = await api.get<{ data: BusinessTeamMember[] }>(`/api/v1/businesses/${businessId}/team`)
-      teamMembers.value = teamResponse.data.data
-    }
     await loadDashboardSummary()
 
     if (!business.value) {
@@ -805,20 +796,6 @@ async function loadWorkspace(): Promise<void> {
     pageError.value = 'We could not load this business workspace.'
   } finally {
     loading.value = false
-  }
-}
-
-async function inviteTeamMember(): Promise<void> {
-  saving.value = true
-  formError.value = ''
-  try {
-    const response = await api.post<{ data: BusinessTeamMember }>(`/api/v1/businesses/${businessId}/team`, teamForm.value)
-    teamMembers.value = [...teamMembers.value.filter((member) => member.id !== response.data.data.id), response.data.data]
-    teamForm.value = { email: '', role: 'accountant' }
-  } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not invite this user.')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -1637,7 +1614,7 @@ async function saveBusinessProfile(): Promise<void> {
       email: nullableText(form.email),
       phone: nullableText(form.phone),
     })
-    business.value = { ...response.data.data, role: business.value?.role ?? null }
+    business.value = { ...response.data.data, role: business.value?.role ?? null, abilities: business.value?.abilities ?? null }
     if (canViewHistory.value) businessHistory.value = await loadAuditTrail('business', businessId)
   } catch (error: unknown) {
     formError.value = getApiError(error, 'We could not save the business details.')
@@ -2382,7 +2359,7 @@ function getApiError(error: unknown, fallback: string): string {
       </section>
 
       <section v-else-if="activeSection === 'documents'" class="content-panel">
-        <DocumentsPanel :business-id="businessId" :can-manage="canEditBookkeeping" :can-upload="canEditBookkeeping || business.role === 'assistant_accountant'" :counterparties="counterparties" />
+        <DocumentsPanel :business-id="businessId" :can-manage="canEditBookkeeping" :can-upload="canUploadDocuments" :counterparties="counterparties" />
       </section>
 
       <section v-else-if="activeSection === 'tasks'" class="content-panel">
@@ -2661,17 +2638,7 @@ function getApiError(error: unknown, fallback: string): string {
         </template>
       </section>
 
-      <section v-else-if="activeSection === 'team' && business.role === 'owner'" class="content-panel">
-        <div class="panel-heading"><div><p class="eyebrow">Business access</p><h2>Team members</h2></div><span class="status-chip">Owner controlled</span></div>
-        <p v-if="formError" class="error-text ledger-error" role="alert">{{ formError }}</p>
-        <form class="entry-form team-invite-form" @submit.prevent="inviteTeamMember">
-          <h3>Invite an existing KontoTrack user</h3>
-          <p class="form-note">They will receive an invitation in their workspace. They must accept it before this business appears in their books.</p>
-          <div class="fields-grid"><label>User email<input v-model.trim="teamForm.email" type="email" required maxlength="255" autocomplete="email" /></label><label>Role<select v-model="teamForm.role"><option value="accountant">Bookkeeper</option><option value="assistant_accountant">Assistant bookkeeper</option><option value="auditor">Auditor / view only</option></select></label></div>
-          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Sending…' : 'Send invitation' }}</button></div>
-        </form>
-        <div class="account-list team-member-list"><article v-for="member in teamMembers" :key="member.id" class="team-member-row"><div><strong>{{ member.name }}</strong><span>{{ member.email }}</span></div><span class="status-chip" :class="{ posted: member.status === 'active' }">{{ member.status }}</span><span class="account-type">{{ member.role.replaceAll('_', ' ') }}</span></article><p v-if="!teamMembers.length" class="empty-message">No team members were found.</p></div>
-      </section>
+      <TeamPanel v-else-if="activeSection === 'team' && business.role === 'owner'" :business-id="businessId" />
 
       <section v-else-if="activeSection === 'ledger'" class="content-panel">
         <div class="panel-heading">
@@ -2751,7 +2718,7 @@ function getApiError(error: unknown, fallback: string): string {
             <div class="fields-grid">
               <label v-for="row in postingAccounts" :key="row.purpose">{{ row.label }}<select v-model="postingAccountForm[row.purpose]"><option value="">Not mapped</option><option v-for="account in accountsForPostingPurpose(row)" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
             </div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || business.role === 'auditor' || business.role === 'assistant_accountant'">{{ saving ? 'Saving…' : 'Save posting accounts' }}</button></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || !canEditBookkeeping">{{ saving ? 'Saving…' : 'Save posting accounts' }}</button></div>
           </form>
         </template>
 

@@ -6,6 +6,8 @@ import LandingView from '../views/LandingView.vue'
 import BusinessWorkspaceView from '../views/BusinessWorkspaceView.vue'
 import ComplianceSettingsView from '../views/ComplianceSettingsView.vue'
 import InvoicePrintView from '../views/InvoicePrintView.vue'
+import PasswordResetView from '../views/PasswordResetView.vue'
+import SystemUsersView from '../views/SystemUsersView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -44,6 +46,14 @@ const router = createRouter({
       component: ComplianceSettingsView,
       meta: { requiresAuth: true, requiresSystemAdmin: true },
     },
+    {
+      path: '/settings/users',
+      name: 'system-users',
+      component: SystemUsersView,
+      meta: { requiresAuth: true, requiresSystemAdmin: true },
+    },
+    { path: '/forgot-password', name: 'forgot-password', component: PasswordResetView },
+    { path: '/reset-password', name: 'reset-password', component: PasswordResetView },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
