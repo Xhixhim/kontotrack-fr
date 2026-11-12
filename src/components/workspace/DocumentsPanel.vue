@@ -85,6 +85,31 @@ function runLabel(run: { period_year: number; period_month: number }): string {
   return `${String(run.period_month).padStart(2, '0')}.${run.period_year}`
 }
 
+// Reading invoices with AI is optional on the server; the button only shows when it is switched on.
+const canReadAutomatically = ref(false)
+const readingDocumentId = ref<number | null>(null)
+
+async function loadFeatures(): Promise<void> {
+  try {
+    const response = await api.get<{ data: { document_reading: boolean } }>('/api/v1/features')
+    canReadAutomatically.value = response.data.data.document_reading
+  } catch {
+    canReadAutomatically.value = false
+  }
+}
+
+function readAutomatically(document: ArchivedDocument): Promise<void> {
+  readingDocumentId.value = document.id
+  return run(async () => {
+    const response = await api.post<{ data: ArchivedDocument }>(`/api/v1/businesses/${props.businessId}/documents/${document.id}/read`)
+    documents.value = documents.value.map((existing) => (existing.id === document.id ? response.data.data : existing))
+    // What was read is only a suggestion: open the review form so a person checks and confirms it.
+    startReview(response.data.data)
+  }, 'This document could not be read automatically.').finally(() => {
+    readingDocumentId.value = null
+  })
+}
+
 async function loadRequests(): Promise<void> {
   const response = await api.get<{ data: DocumentRequest[] }>(`/api/v1/businesses/${props.businessId}/document-requests`)
   requests.value = response.data.data
@@ -212,7 +237,7 @@ function rejectRequest(request: DocumentRequest): Promise<void> {
   }, 'We could not send this document back.')
 }
 
-onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadRequests(), loadPayrollLinks()]) }, 'We could not load documents.'))
+onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadRequests(), loadPayrollLinks(), loadFeatures()]) }, 'We could not load documents.'))
 </script>
 
 <template>
@@ -261,6 +286,7 @@ onMounted(() => run(async () => { await Promise.all([loadDocuments(), loadReques
           <span class="severity-chip" :class="document.review_status === 'reviewed' ? 'ok' : 'info'">{{ document.review_status }}</span>
           <div class="contact-actions">
             <button v-if="canManage" class="text-button" type="button" @click="startEditing(document)">Details</button>
+            <button v-if="canManage && canReadAutomatically && ['invoice', 'receipt'].includes(document.category)" class="text-button" type="button" :disabled="saving" title="Sends this document to the AI service to read its fields. You check the result before it is saved." @click="readAutomatically(document)">{{ readingDocumentId === document.id ? 'Reading…' : 'Read automatically' }}</button>
             <button v-if="canManage" class="text-button" type="button" @click="startReview(document)">Review</button>
           </div>
           <form v-if="editingDocument?.id === document.id" class="entry-form inline-form" @submit.prevent="saveDetails(document)">
