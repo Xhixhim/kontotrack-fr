@@ -949,4 +949,5 @@ export const sq: Record<string, string> = {
   '{0} businesses': '{0} biznese',
   '{0} deadline(s) added from tax calendar {1}.': 'U shtuan {0} afate nga kalendari tatimor {1}.',
   '{0} uncategorised line(s) got a suggestion.': '{0} rreshta pa kategori morën sugjerim.',
+  'Quarterly tax': 'Tatimi tremujor',
 }

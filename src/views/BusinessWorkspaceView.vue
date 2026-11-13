@@ -15,6 +15,7 @@ import ImportPanel from '@/components/workspace/ImportPanel.vue'
 import InvoiceEmailForm from '@/components/workspace/InvoiceEmailForm.vue'
 import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
+import GrossIncomeTaxPanel from '@/components/workspace/GrossIncomeTaxPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
 import OperationalReportsPanel from '@/components/workspace/OperationalReportsPanel.vue'
 import ApiKeysPanel from '@/components/workspace/ApiKeysPanel.vue'
@@ -493,7 +494,7 @@ const dashboardFrom = ref(`${todayIsoDate().slice(0, 7)}-01`)
 const dashboardTo = ref(todayIsoDate())
 const financialReport = ref<FinancialReport | null>(null)
 const reportType = ref<FinancialReport['type']>('trial_balance')
-const reportsView = ref<'statements' | 'ledger' | 'operations' | 'atk'>('statements')
+const reportsView = ref<'statements' | 'ledger' | 'operations' | 'atk' | 'quarterly'>('statements')
 const reportTypeLabels: Record<FinancialReport['type'], string> = {
   trial_balance: tr('Trial balance'),
   profit_loss: tr('Profit and loss'),
@@ -2161,8 +2162,10 @@ function getApiError(error: unknown, fallback: string): string {
           <button :class="{ active: reportsView === 'ledger' }" @click="reportsView = 'ledger'">{{ tr('Account cards & cash book') }}</button>
           <button :class="{ active: reportsView === 'operations' }" @click="reportsView = 'operations'">{{ tr('Turnover, stock, payroll, assets') }}</button>
           <button :class="{ active: reportsView === 'atk' }" @click="reportsView = 'atk'">{{ tr('ATK · VAT books') }}</button>
+          <button :class="{ active: reportsView === 'quarterly' }" @click="reportsView = 'quarterly'">{{ tr('Quarterly tax') }}</button>
         </nav>
         <OperationalReportsPanel v-if="reportsView === 'operations'" :business-id="businessId" :currency="business.currency" :counterparties="counterparties" :warehouses="warehouses" :units="units" :can-view-payroll="canViewPayroll" />
+        <GrossIncomeTaxPanel v-if="reportsView === 'quarterly'" :business-id="businessId" :currency="business.currency" :can-edit="canEditBookkeeping" />
         <AtkFilingsPanel v-if="reportsView === 'atk'" :business-id="businessId" :currency="business.currency" :vat-registered="business.vat_status === 'registered'" />
         <LedgerReportsPanel v-if="reportsView === 'ledger'" :business-id="businessId" :business-name="business.legal_name" :business-nui="business.nui" :currency="business.currency" :accounts="accounts" :cash-accounts="cashAccounts" :units="units" />
         <div v-show="reportsView === 'statements'">
