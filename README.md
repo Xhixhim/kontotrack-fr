@@ -52,3 +52,7 @@ npm run lint
 Every push and pull request runs `.github/workflows/ci.yml`: type check, lint and a production build.
 
 To build for staging, copy `.env.staging.example` to `.env.staging.local`, set the address of the staging API, and run `npx vite build --mode staging`. The built files are in `dist/`.
+
+## Using it on a phone
+
+The app can be installed from the browser ("Add to Home screen" / "Install app"): `public/manifest.webmanifest` and the icons in `public/` give it its own icon and a full-screen window. It needs a connection to the API; nothing works offline.
