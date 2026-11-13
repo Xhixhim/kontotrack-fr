@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '@/lib/tr'
 import { ref } from 'vue'
 import api from '@/lib/api'
 import { getApiError } from '@/lib/format'
@@ -30,7 +31,7 @@ function begin(): Promise<void> {
   return run(async () => {
     const response = await api.post<{ data: { secret: string; otpauth_uri: string } }>('/api/v1/me/two-factor')
     setup.value = response.data.data
-  }, 'We could not start two-factor setup.')
+  }, tr('We could not start two-factor setup.'))
 }
 
 function confirm(): Promise<void> {
@@ -40,7 +41,7 @@ function confirm(): Promise<void> {
     setup.value = null
     code.value = ''
     await auth.fetchUser()
-  }, 'That code is not valid.')
+  }, tr('That code is not valid.'))
 }
 
 function disable(): Promise<void> {
@@ -50,42 +51,42 @@ function disable(): Promise<void> {
     showDisable.value = false
     recoveryCodes.value = []
     await auth.fetchUser()
-  }, 'We could not turn off two-factor sign-in.')
+  }, tr('We could not turn off two-factor sign-in.'))
 }
 </script>
 
 <template>
   <section class="two-factor-card" aria-labelledby="two-factor-heading">
     <div class="two-factor-heading">
-      <div><p class="eyebrow">Account security</p><h2 id="two-factor-heading">Two-factor sign-in</h2></div>
-      <span class="severity-chip" :class="auth.user?.two_factor_enabled ? 'ok' : 'warning'">{{ auth.user?.two_factor_enabled ? 'On' : 'Off' }}</span>
+      <div><p class="eyebrow">{{ tr('Account security') }}</p><h2 id="two-factor-heading">{{ tr('Two-factor sign-in') }}</h2></div>
+      <span class="severity-chip" :class="auth.user?.two_factor_enabled ? 'ok' : 'warning'">{{ auth.user?.two_factor_enabled ? tr('On') : tr('Off') }}</span>
     </div>
-    <p class="form-note">With two-factor sign-in, signing in also needs a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…), so a stolen password alone is not enough.</p>
+    <p class="form-note">{{ tr('With two-factor sign-in, signing in also needs a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…), so a stolen password alone is not enough.') }}</p>
     <p v-if="error" class="error-text" role="alert">{{ error }}</p>
 
     <div v-if="recoveryCodes.length" class="recovery-codes">
-      <strong>Save these recovery codes now.</strong>
-      <p class="form-note">Each code works once if you lose your phone. They will not be shown again.</p>
+      <strong>{{ tr('Save these recovery codes now.') }}</strong>
+      <p class="form-note">{{ tr('Each code works once if you lose your phone. They will not be shown again.') }}</p>
       <ul><li v-for="recovery in recoveryCodes" :key="recovery"><code>{{ recovery }}</code></li></ul>
     </div>
 
     <template v-if="!auth.user?.two_factor_enabled">
-      <button v-if="!setup" class="primary-button" type="button" :disabled="saving" @click="begin">Turn on</button>
+      <button v-if="!setup" class="primary-button" type="button" :disabled="saving" @click="begin">{{ tr('Turn on') }}</button>
       <form v-else class="entry-form" @submit.prevent="confirm">
         <ol class="setup-steps">
-          <li>In your authenticator app, add an account by entering this key: <code class="secret">{{ setup.secret }}</code> <span class="form-note">(or open <a :href="setup.otpauth_uri">this link</a> on the phone with the app).</span></li>
-          <li>Enter the 6-digit code the app shows.</li>
+          <li>{{ tr('In your authenticator app, add an account by entering this key:') }} <code class="secret">{{ setup.secret }}</code> <span class="form-note">{{ tr('(or open') }} <a :href="setup.otpauth_uri">{{ tr('this link') }}</a> {{ tr('on the phone with the app).') }}</span></li>
+          <li>{{ tr('Enter the 6-digit code the app shows.') }}</li>
         </ol>
-        <label>Code<input v-model.trim="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required /></label>
-        <div class="form-footer"><button class="text-button" type="button" @click="setup = null">Cancel</button><button class="primary-button" type="submit" :disabled="saving">Confirm</button></div>
+        <label>{{ tr('Code') }}<input v-model.trim="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required /></label>
+        <div class="form-footer"><button class="text-button" type="button" @click="setup = null">{{ tr('Cancel') }}</button><button class="primary-button" type="submit" :disabled="saving">{{ tr('Confirm') }}</button></div>
       </form>
     </template>
     <template v-else>
-      <button v-if="!showDisable" class="text-button" type="button" @click="showDisable = true">Turn off</button>
+      <button v-if="!showDisable" class="text-button" type="button" @click="showDisable = true">{{ tr('Turn off') }}</button>
       <form v-else class="entry-form" @submit.prevent="disable">
-        <label>Password<input v-model="disableForm.password" type="password" autocomplete="current-password" required /></label>
-        <label>Code from your app<input v-model.trim="disableForm.code" inputmode="numeric" maxlength="6" required /></label>
-        <div class="form-footer"><button class="text-button" type="button" @click="showDisable = false">Cancel</button><button class="primary-button" type="submit" :disabled="saving">Turn off two-factor</button></div>
+        <label>{{ tr('Password') }}<input v-model="disableForm.password" type="password" autocomplete="current-password" required /></label>
+        <label>{{ tr('Code from your app') }}<input v-model.trim="disableForm.code" inputmode="numeric" maxlength="6" required /></label>
+        <div class="form-footer"><button class="text-button" type="button" @click="showDisable = false">{{ tr('Cancel') }}</button><button class="primary-button" type="submit" :disabled="saving">{{ tr('Turn off two-factor') }}</button></div>
       </form>
     </template>
   </section>

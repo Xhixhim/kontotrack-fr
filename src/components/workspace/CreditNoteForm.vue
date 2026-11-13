@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr, trValue } from '@/lib/tr'
 import { onMounted, ref } from 'vue'
 import api from '@/lib/api'
 import { formatMoney, getApiError, nullableText, todayIsoDate } from '@/lib/format'
@@ -41,7 +42,7 @@ async function loadVatCodes(): Promise<void> {
     const response = await api.get<{ data: { codes: VatCode[] } }>(`/api/v1/businesses/${props.businessId}/vat-codes`, { params: { date: issuedOn.value } })
     vatCodes.value = response.data.data.codes
   } catch (caught: unknown) {
-    error.value = getApiError(caught, 'No approved VAT rules apply to this date.')
+    error.value = getApiError(caught, tr('No approved VAT rules apply to this date.'))
   }
 }
 
@@ -59,7 +60,7 @@ async function submit(): Promise<void> {
     })
     emit('created', response.data.data)
   } catch (caught: unknown) {
-    error.value = getApiError(caught, 'We could not create this credit note.')
+    error.value = getApiError(caught, tr('We could not create this credit note.'))
   } finally {
     saving.value = false
   }
@@ -70,25 +71,25 @@ onMounted(loadVatCodes)
 
 <template>
   <form class="entry-form credit-note-form" @submit.prevent="submit">
-    <h4>Credit note for {{ invoice.invoice_number }}</h4>
-    <p class="form-note">Up to {{ formatMoney(remaining, invoice.currency) }} can still be credited. The draft is issued like an invoice and posts the reverse entry; goods on stock lines go back into stock.</p>
+    <h4>{{ tr('Credit note for') }} {{ invoice.invoice_number }}</h4>
+    <p class="form-note">{{ tr('Up to') }} {{ formatMoney(remaining, invoice.currency) }} {{ tr('can still be credited. The draft is issued like an invoice and posts the reverse entry; goods on stock lines go back into stock.') }}</p>
     <p v-if="error" class="error-text" role="alert">{{ error }}</p>
     <div class="fields-grid">
-      <label>Date<input v-model="issuedOn" type="date" required @change="loadVatCodes" /></label>
-      <label>Reason<input v-model.trim="reason" required maxlength="5000" placeholder="Returned goods, price correction…" /></label>
+      <label>{{ tr('Date') }}<input v-model="issuedOn" type="date" required @change="loadVatCodes" /></label>
+      <label>{{ tr('Reason') }}<input v-model.trim="reason" required maxlength="5000" :placeholder="tr('Returned goods, price correction…')" /></label>
       <template v-if="invoice.kind === 'purchase'">
-        <label>Supplier's credit note number<input v-model.trim="supplierNumber" required maxlength="80" /></label>
-        <label>Supplier's credit note (document)<select v-model="documentId" required><option disabled value="">Choose document</option><option v-for="document in documents" :key="document.id" :value="String(document.id)">{{ document.category }} · {{ document.original_name }}</option></select></label>
+        <label>{{ tr('Supplier\'s credit note number') }}<input v-model.trim="supplierNumber" required maxlength="80" /></label>
+        <label>{{ tr('Supplier\'s credit note (document)') }}<select v-model="documentId" required><option disabled value="">{{ tr('Choose document') }}</option><option v-for="document in documents" :key="document.id" :value="String(document.id)">{{ trValue(document.category) }} · {{ document.original_name }}</option></select></label>
       </template>
     </div>
     <div v-for="(line, index) in lines" :key="index" class="credit-line">
-      <label>Description<input v-model.trim="line.description" required maxlength="255" /></label>
-      <label>Quantity<input v-model="line.quantity" type="number" min="0.0001" step="0.0001" required /></label>
-      <label>Unit price<input v-model="line.unit_price" type="number" min="0" step="0.0001" required /></label>
-      <label>VAT<select v-model="line.vat_code" required><option v-for="code in vatCodes" :key="code.code" :value="code.code">{{ code.code }} · {{ code.rate_percent }}%</option></select></label>
-      <button v-if="lines.length > 1" class="text-button" type="button" @click="lines.splice(index, 1)">Remove</button>
+      <label>{{ tr('Description') }}<input v-model.trim="line.description" required maxlength="255" /></label>
+      <label>{{ tr('Quantity') }}<input v-model="line.quantity" type="number" min="0.0001" step="0.0001" required /></label>
+      <label>{{ tr('Unit price') }}<input v-model="line.unit_price" type="number" min="0" step="0.0001" required /></label>
+      <label>{{ tr('VAT') }}<select v-model="line.vat_code" required><option v-for="code in vatCodes" :key="code.code" :value="code.code">{{ code.code }} · {{ code.rate_percent }}%</option></select></label>
+      <button v-if="lines.length > 1" class="text-button" type="button" @click="lines.splice(index, 1)">{{ tr('Remove') }}</button>
     </div>
-    <div class="form-footer"><button class="text-button" type="button" @click="emit('cancel')">Cancel</button><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Create credit note draft' }}</button></div>
+    <div class="form-footer"><button class="text-button" type="button" @click="emit('cancel')">{{ tr('Cancel') }}</button><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Create credit note draft') }}</button></div>
   </form>
 </template>
 

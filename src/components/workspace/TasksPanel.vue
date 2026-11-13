@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr, trf } from '@/lib/tr'
 import { computed, onMounted, ref } from 'vue'
 import api from '@/lib/api'
 import { formatDate, formatMoney, getApiError, nullableText, todayIsoDate } from '@/lib/format'
@@ -56,7 +57,7 @@ async function load(): Promise<void> {
     tasks.value = tasksResponse.data.data
     members.value = membersResponse.data.data
   } catch (caught: unknown) {
-    error.value = getApiError(caught, 'We could not load tasks.')
+    error.value = getApiError(caught, tr('We could not load tasks.'))
   }
 }
 
@@ -85,15 +86,15 @@ function createTask(): Promise<void> {
     taskForm.value = { title: '', due_on: todayIsoDate(), notes: '', assigned_to: '' }
     showTaskForm.value = false
     await load()
-  }, 'We could not create this task.')
+  }, tr('We could not create this task.'))
 }
 
 function generateCalendar(): Promise<void> {
   return run(async () => {
     const response = await api.post<{ data: { created: number; rule_version: string } }>(`/api/v1/businesses/${props.businessId}/tasks/generate-tax-calendar`, { year: generateYear.value })
-    notice.value = `${response.data.data.created} deadline(s) added from tax calendar ${response.data.data.rule_version}.`
+    notice.value = trf('{0} deadline(s) added from tax calendar {1}.', [response.data.data.created, response.data.data.rule_version])
     await load()
-  }, 'We could not generate the tax calendar.')
+  }, tr('We could not generate the tax calendar.'))
 }
 
 function startCompleting(task: BusinessTask): void {
@@ -127,7 +128,7 @@ function completeTask(task: BusinessTask): Promise<void> {
     })
     completingTaskId.value = null
     await load()
-  }, 'We could not complete this task.')
+  }, tr('We could not complete this task.'))
 }
 
 onMounted(load)
@@ -136,32 +137,32 @@ onMounted(load)
 <template>
   <div>
     <div class="panel-heading">
-      <div><p class="eyebrow">Filings, reminders, follow-ups</p><h2>Tasks & deadlines</h2></div>
-      <button v-if="canEdit" class="primary-button" type="button" @click="showTaskForm = !showTaskForm">{{ showTaskForm ? 'Cancel' : 'Add task' }}</button>
+      <div><p class="eyebrow">{{ tr('Filings, reminders, follow-ups') }}</p><h2>{{ tr('Tasks & deadlines') }}</h2></div>
+      <button v-if="canEdit" class="primary-button" type="button" @click="showTaskForm = !showTaskForm">{{ showTaskForm ? tr('Cancel') : tr('Add task') }}</button>
     </div>
     <div class="summary-grid">
-      <article class="summary-card"><span>Overdue</span><strong>{{ overdueCount }}</strong><small>Open tasks past their deadline</small></article>
-      <article class="summary-card"><span>Due within 7 days</span><strong>{{ dueSoonCount }}</strong><small>Open tasks coming up</small></article>
+      <article class="summary-card"><span>{{ tr('Overdue') }}</span><strong>{{ overdueCount }}</strong><small>{{ tr('Open tasks past their deadline') }}</small></article>
+      <article class="summary-card"><span>{{ tr('Due within 7 days') }}</span><strong>{{ dueSoonCount }}</strong><small>{{ tr('Open tasks coming up') }}</small></article>
     </div>
     <p v-if="error" class="error-text" role="alert">{{ error }}</p>
     <p v-if="notice" class="form-note" role="status">{{ notice }}</p>
 
     <form v-if="showTaskForm" class="entry-form" @submit.prevent="createTask">
-      <h3>New task</h3>
+      <h3>{{ tr('New task') }}</h3>
       <div class="fields-grid">
-        <label>Title<input v-model.trim="taskForm.title" required maxlength="200" /></label>
-        <label>Due on<input v-model="taskForm.due_on" type="date" required /></label>
-        <label>Assign to<select v-model="taskForm.assigned_to"><option value="">Nobody</option><option v-for="member in members" :key="member.id" :value="String(member.id)">{{ member.name }}</option></select></label>
-        <label>Notes<input v-model.trim="taskForm.notes" maxlength="5000" /></label>
+        <label>{{ tr('Title') }}<input v-model.trim="taskForm.title" required maxlength="200" /></label>
+        <label>{{ tr('Due on') }}<input v-model="taskForm.due_on" type="date" required /></label>
+        <label>{{ tr('Assign to') }}<select v-model="taskForm.assigned_to"><option value="">{{ tr('Nobody') }}</option><option v-for="member in members" :key="member.id" :value="String(member.id)">{{ member.name }}</option></select></label>
+        <label>{{ tr('Notes') }}<input v-model.trim="taskForm.notes" maxlength="5000" /></label>
       </div>
-      <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">Save task</button></div>
+      <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ tr('Save task') }}</button></div>
     </form>
 
     <form class="report-filters" @submit.prevent="load">
-      <label>Show<select v-model="statusFilter" @change="load"><option value="open">Open</option><option value="done">Done</option><option value="">All</option></select></label>
+      <label>{{ tr('Show') }}<select v-model="statusFilter" @change="load"><option value="open">{{ tr('Open') }}</option><option value="done">{{ tr('Done') }}</option><option value="">{{ tr('All') }}</option></select></label>
       <template v-if="canGenerate">
-        <label>Tax calendar year<input v-model.number="generateYear" type="number" min="2000" max="2100" /></label>
-        <button class="text-button" type="button" :disabled="saving" @click="generateCalendar">Add filing deadlines</button>
+        <label>{{ tr('Tax calendar year') }}<input v-model.number="generateYear" type="number" min="2000" max="2100" /></label>
+        <button class="text-button" type="button" :disabled="saving" @click="generateCalendar">{{ tr('Add filing deadlines') }}</button>
       </template>
     </form>
 
@@ -169,20 +170,20 @@ onMounted(load)
       <article v-for="task in tasks" :key="task.id" class="contact-row task-row" :class="{ overdue: task.is_overdue }">
         <div>
           <strong>{{ task.title }}</strong>
-          <span>{{ task.kind === 'tax_filing' ? 'Tax filing' : 'Task' }} · due {{ formatDate(task.due_on) }}<template v-if="task.assigned_to"> · {{ task.assigned_to.name }}</template><template v-if="task.notes"> · {{ task.notes }}</template></span>
-          <span v-if="task.status === 'done'">Done {{ formatDate(task.completed_on) }}<template v-if="task.reference"> · ref. {{ task.reference }}</template><template v-if="task.amount"> · {{ formatMoney(task.amount, currency) }}</template><template v-if="task.document"> · {{ task.document.original_name }}</template></span>
+          <span>{{ task.kind === 'tax_filing' ? tr('Tax filing') : tr('Task') }} {{ tr('· due') }} {{ formatDate(task.due_on) }}<template v-if="task.assigned_to"> · {{ task.assigned_to.name }}</template><template v-if="task.notes"> · {{ task.notes }}</template></span>
+          <span v-if="task.status === 'done'">{{ tr('Done') }} {{ formatDate(task.completed_on) }}<template v-if="task.reference"> {{ tr('· ref.') }} {{ task.reference }}</template><template v-if="task.amount"> · {{ formatMoney(task.amount, currency) }}</template><template v-if="task.document"> · {{ task.document.original_name }}</template></span>
         </div>
         <span class="severity-chip" :class="task.status === 'done' ? 'ok' : task.is_overdue ? 'critical' : 'warning'">{{ task.status === 'done' ? 'done' : task.is_overdue ? 'overdue' : 'open' }}</span>
-        <div class="contact-actions"><button v-if="canEdit && task.status === 'open'" class="text-button" type="button" @click="startCompleting(task)">{{ task.kind === 'tax_filing' ? 'Mark filed' : 'Mark done' }}</button></div>
+        <div class="contact-actions"><button v-if="canEdit && task.status === 'open'" class="text-button" type="button" @click="startCompleting(task)">{{ task.kind === 'tax_filing' ? tr('Mark filed') : tr('Mark done') }}</button></div>
         <form v-if="completingTaskId === task.id" class="entry-form complete-form" @submit.prevent="completeTask(task)">
-          <label>Completed on<input v-model="completeForm.completed_on" type="date" required /></label>
-          <label>Reference <span>(optional)</span><input v-model.trim="completeForm.reference" maxlength="120" /></label>
-          <label v-if="task.kind === 'tax_filing'">Amount declared <span>(optional)</span><input v-model="completeForm.amount" type="number" min="0" step="0.01" /></label>
-          <label>{{ task.kind === 'tax_filing' ? 'Filing confirmation' : 'Attachment (optional)' }}<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" :required="task.kind === 'tax_filing'" @change="selectConfirmation" /></label>
-          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Confirm' }}</button></div>
+          <label>{{ tr('Completed on') }}<input v-model="completeForm.completed_on" type="date" required /></label>
+          <label>{{ tr('Reference') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="completeForm.reference" maxlength="120" /></label>
+          <label v-if="task.kind === 'tax_filing'">{{ tr('Amount declared') }} <span>{{ tr('(optional)') }}</span><input v-model="completeForm.amount" type="number" min="0" step="0.01" /></label>
+          <label>{{ task.kind === 'tax_filing' ? tr('Filing confirmation') : tr('Attachment (optional)') }}<input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" :required="task.kind === 'tax_filing'" @change="selectConfirmation" /></label>
+          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Confirm') }}</button></div>
         </form>
       </article>
-      <p v-if="!tasks.length" class="empty-message">No tasks here.</p>
+      <p v-if="!tasks.length" class="empty-message">{{ tr('No tasks here.') }}</p>
     </div>
   </div>
 </template>

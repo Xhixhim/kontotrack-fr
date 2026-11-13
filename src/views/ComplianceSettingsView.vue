@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr, trf, trValue } from '@/lib/tr'
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import api from '@/lib/api'
@@ -57,7 +58,7 @@ async function loadRuleSets(): Promise<void> {
     const response = await api.get<{ data: ComplianceRuleSet[] }>('/api/v1/compliance/rule-sets')
     ruleSets.value = response.data.data
   } catch {
-    pageError.value = 'We could not load the compliance rule sets.'
+    pageError.value = tr('We could not load the compliance rule sets.')
   } finally {
     loading.value = false
   }
@@ -111,14 +112,14 @@ async function saveDraft(): Promise<void> {
     ruleSets.value = [response.data.data, ...ruleSets.value.filter((item) => item.id !== response.data.data.id)]
     resetForm()
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'Check that each rule configuration contains valid JSON.')
+    formError.value = getApiError(error, tr('Check that each rule configuration contains valid JSON.'))
   } finally {
     saving.value = false
   }
 }
 
 async function approve(ruleSet: ComplianceRuleSet): Promise<void> {
-  if (!window.confirm(`Approve ${ruleSet.domain} rules version ${ruleSet.version}? Approved rules are immutable.`)) return
+  if (!window.confirm(trf('Approve {0} rules version {1}? Approved rules are immutable.', [ruleSet.domain, ruleSet.version]))) return
 
   saving.value = true
   pageError.value = ''
@@ -127,7 +128,7 @@ async function approve(ruleSet: ComplianceRuleSet): Promise<void> {
     const response = await api.post<{ data: ComplianceRuleSet }>(`/api/v1/compliance/rule-sets/${ruleSet.id}/approve`)
     ruleSets.value = ruleSets.value.map((item) => item.id === ruleSet.id ? response.data.data : item)
   } catch (error: unknown) {
-    pageError.value = getApiError(error, 'This rule set could not be approved.')
+    pageError.value = getApiError(error, tr('This rule set could not be approved.'))
   } finally {
     saving.value = false
   }
@@ -146,60 +147,60 @@ function getApiError(error: unknown, fallback: string): string {
 <template>
   <main class="compliance-shell">
     <header class="topbar">
-      <RouterLink class="back-link" :to="{ name: 'dashboard' }">← Dashboard</RouterLink>
-      <span class="product-label">KontoTrack</span>
+      <RouterLink class="back-link" :to="{ name: 'dashboard' }">{{ tr('← Dashboard') }}</RouterLink>
+      <span class="product-label">{{ tr('KontoTrack') }}</span>
     </header>
 
     <section class="page-heading">
-      <p class="eyebrow">System administration</p>
-      <h1>Compliance rules</h1>
-      <p>Store sourced, versioned rules with effective dates. A rule set must be approved before normal users can use it.</p>
+      <p class="eyebrow">{{ tr('System administration') }}</p>
+      <h1>{{ tr('Compliance rules') }}</h1>
+      <p>{{ tr('Store sourced, versioned rules with effective dates. A rule set must be approved before normal users can use it.') }}</p>
     </section>
 
     <p v-if="pageError" class="feedback error" role="alert">{{ pageError }}</p>
 
     <section class="content-panel">
-      <div class="panel-heading"><div><p class="eyebrow">New version</p><h2>{{ editingId ? 'Edit draft' : 'Create draft' }}</h2></div><button v-if="editingId" class="text-button" type="button" @click="resetForm">Cancel edit</button></div>
-      <p class="form-note">Use a primary or official source. Configurations are saved as supplied; the application does not invent rates or legal interpretations.</p>
+      <div class="panel-heading"><div><p class="eyebrow">{{ tr('New version') }}</p><h2>{{ editingId ? tr('Edit draft') : tr('Create draft') }}</h2></div><button v-if="editingId" class="text-button" type="button" @click="resetForm">{{ tr('Cancel edit') }}</button></div>
+      <p class="form-note">{{ tr('Use a primary or official source. Configurations are saved as supplied; the application does not invent rates or legal interpretations.') }}</p>
       <p v-if="formError" class="error-text" role="alert">{{ formError }}</p>
       <form class="entry-form" @submit.prevent="saveDraft">
         <div class="fields-grid">
-          <label>Jurisdiction<input v-model.trim="form.jurisdiction" required minlength="2" maxlength="8" /></label>
-          <label>Domain<input v-model.trim="form.domain" required maxlength="40" placeholder="vat, invoicing, payroll…" /></label>
-          <label>Version<input v-model.trim="form.version" required maxlength="40" /></label>
-          <label>Valid from<input v-model="form.valid_from" type="date" required /></label>
-          <label>Valid to <span>(optional)</span><input v-model="form.valid_to" type="date" /></label>
-          <label>Source title<input v-model.trim="form.source_title" required maxlength="255" /></label>
-          <label class="wide-field">Official source URL<input v-model.trim="form.source_url" type="url" required maxlength="2048" /></label>
+          <label>{{ tr('Jurisdiction') }}<input v-model.trim="form.jurisdiction" required minlength="2" maxlength="8" /></label>
+          <label>{{ tr('Domain') }}<input v-model.trim="form.domain" required maxlength="40" :placeholder="tr('vat, invoicing, payroll…')" /></label>
+          <label>{{ tr('Version') }}<input v-model.trim="form.version" required maxlength="40" /></label>
+          <label>{{ tr('Valid from') }}<input v-model="form.valid_from" type="date" required /></label>
+          <label>{{ tr('Valid to') }} <span>{{ tr('(optional)') }}</span><input v-model="form.valid_to" type="date" /></label>
+          <label>{{ tr('Source title') }}<input v-model.trim="form.source_title" required maxlength="255" /></label>
+          <label class="wide-field">{{ tr('Official source URL') }}<input v-model.trim="form.source_url" type="url" required maxlength="2048" /></label>
         </div>
 
-        <div class="lines-heading"><h3>Rules and configuration</h3><button class="text-button" type="button" @click="addRule">＋ Add rule</button></div>
-        <p v-if="form.jurisdiction === 'XK' && form.domain === 'vat'" class="form-note">For invoice tax selection, add a <code>vat_codes</code> rule with a <code>codes</code> array. Each code needs <code>code</code>, <code>label</code>, <code>rate_percent</code>, and <code>treatment</code> (<code>taxable</code>, <code>exempt</code>, <code>zero_rated</code>, or <code>non_vat</code>). Rates are reviewed configuration, not built-in defaults.</p>
+        <div class="lines-heading"><h3>{{ tr('Rules and configuration') }}</h3><button class="text-button" type="button" @click="addRule">{{ tr('＋ Add rule') }}</button></div>
+        <p v-if="form.jurisdiction === 'XK' && form.domain === 'vat'" class="form-note">{{ tr('For invoice tax selection, add a') }} <code>vat_codes</code> {{ tr('rule with a') }} <code>codes</code> {{ tr('array. Each code needs') }} <code>code</code>, <code>label</code>, <code>rate_percent</code>{{ tr(', and') }} <code>treatment</code> (<code>taxable</code>, <code>exempt</code>, <code>zero_rated</code>{{ tr(', or') }} <code>non_vat</code>{{ tr('). Rates are reviewed configuration, not built-in defaults.') }}</p>
         <article v-for="(rule, index) in ruleDrafts" :key="index" class="rule-draft">
-          <div class="rule-heading"><strong>Rule {{ index + 1 }}</strong><button v-if="ruleDrafts.length > 1" class="remove-line" type="button" :aria-label="`Remove rule ${index + 1}`" @click="ruleDrafts.splice(index, 1)">×</button></div>
+          <div class="rule-heading"><strong>{{ tr('Rule') }} {{ index + 1 }}</strong><button v-if="ruleDrafts.length > 1" class="remove-line" type="button" :aria-label="trf('Remove rule {0}', [index + 1])" @click="ruleDrafts.splice(index, 1)">×</button></div>
           <div class="fields-grid">
-            <label>Rule key<input v-model.trim="rule.rule_key" required maxlength="100" placeholder="e.g. vat_rates" /></label>
-            <label>Description <span>(optional)</span><input v-model.trim="rule.description" maxlength="2000" /></label>
-            <label class="wide-field">Configuration JSON<textarea v-model="rule.configuration_json" rows="6" required spellcheck="false" /></label>
+            <label>{{ tr('Rule key') }}<input v-model.trim="rule.rule_key" required maxlength="100" :placeholder="tr('e.g. vat_rates')" /></label>
+            <label>{{ tr('Description') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="rule.description" maxlength="2000" /></label>
+            <label class="wide-field">{{ tr('Configuration JSON') }}<textarea v-model="rule.configuration_json" rows="6" required spellcheck="false" /></label>
           </div>
         </article>
-        <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : editingId ? 'Save draft changes' : 'Save draft' }}</button></div>
+        <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : editingId ? tr('Save draft changes') : tr('Save draft') }}</button></div>
       </form>
     </section>
 
     <section class="content-panel rules-panel">
-      <div class="panel-heading"><div><p class="eyebrow">Version history</p><h2>Rule sets</h2></div></div>
-      <p v-if="loading" class="feedback">Loading rule sets…</p>
+      <div class="panel-heading"><div><p class="eyebrow">{{ tr('Version history') }}</p><h2>{{ tr('Rule sets') }}</h2></div></div>
+      <p v-if="loading" class="feedback">{{ tr('Loading rule sets…') }}</p>
       <div v-else-if="ruleSets.length" class="rule-set-list">
         <article v-for="ruleSet in ruleSets" :key="ruleSet.id" class="rule-set-card">
-          <div class="rule-set-header"><div><strong>{{ ruleSet.jurisdiction }} · {{ ruleSet.domain }} · {{ ruleSet.version }}</strong><span>{{ ruleSet.source_title }}</span></div><span class="status-chip" :class="{ posted: ruleSet.approval_status === 'approved' }">{{ ruleSet.approval_status }}</span></div>
-          <p class="effective-dates">Effective {{ ruleSet.valid_from }}{{ ruleSet.valid_to ? ` to ${ruleSet.valid_to}` : ' onward' }} · {{ ruleSet.rules.length }} rules</p>
-          <a class="source-link" :href="ruleSet.source_url" target="_blank" rel="noreferrer">Open source ↗</a>
-          <div v-if="ruleSet.approval_status === 'draft'" class="rule-set-actions"><button class="text-button" type="button" :disabled="saving" @click="startEdit(ruleSet)">Edit draft</button><button class="primary-button" type="button" :disabled="saving" @click="approve(ruleSet)">Approve version</button></div>
-          <p v-else class="approved-by">Approved {{ ruleSet.approved_at ? new Date(ruleSet.approved_at).toLocaleString() : '' }}</p>
+          <div class="rule-set-header"><div><strong>{{ ruleSet.jurisdiction }} · {{ ruleSet.domain }} · {{ ruleSet.version }}</strong><span>{{ ruleSet.source_title }}</span></div><span class="status-chip" :class="{ posted: ruleSet.approval_status === 'approved' }">{{ trValue(ruleSet.approval_status) }}</span></div>
+          <p class="effective-dates">{{ tr('Effective') }} {{ ruleSet.valid_from }}{{ ruleSet.valid_to ? ` to ${ruleSet.valid_to}` : tr(' onward') }} · {{ ruleSet.rules.length }} {{ tr('rules') }}</p>
+          <a class="source-link" :href="ruleSet.source_url" target="_blank" rel="noreferrer">{{ tr('Open source ↗') }}</a>
+          <div v-if="ruleSet.approval_status === 'draft'" class="rule-set-actions"><button class="text-button" type="button" :disabled="saving" @click="startEdit(ruleSet)">{{ tr('Edit draft') }}</button><button class="primary-button" type="button" :disabled="saving" @click="approve(ruleSet)">{{ tr('Approve version') }}</button></div>
+          <p v-else class="approved-by">{{ tr('Approved') }} {{ ruleSet.approved_at ? new Date(ruleSet.approved_at).toLocaleString() : '' }}</p>
         </article>
       </div>
-      <p v-else class="empty-message">No rule sets yet. Add a sourced version above.</p>
+      <p v-else class="empty-message">{{ tr('No rule sets yet. Add a sourced version above.') }}</p>
     </section>
   </main>
 </template>

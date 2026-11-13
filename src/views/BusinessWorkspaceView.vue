@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr, trf, trValue } from '@/lib/tr'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import BusinessDashboard from '@/components/dashboard/BusinessDashboard.vue'
@@ -494,12 +495,12 @@ const financialReport = ref<FinancialReport | null>(null)
 const reportType = ref<FinancialReport['type']>('trial_balance')
 const reportsView = ref<'statements' | 'ledger' | 'operations' | 'atk'>('statements')
 const reportTypeLabels: Record<FinancialReport['type'], string> = {
-  trial_balance: 'Trial balance',
-  profit_loss: 'Profit and loss',
-  balance_sheet: 'Balance sheet',
-  vat_summary: 'VAT summary',
-  receivable_aging: 'Receivables ageing',
-  payable_aging: 'Payables ageing',
+  trial_balance: tr('Trial balance'),
+  profit_loss: tr('Profit and loss'),
+  balance_sheet: tr('Balance sheet'),
+  vat_summary: tr('VAT summary'),
+  receivable_aging: tr('Receivables ageing'),
+  payable_aging: tr('Payables ageing'),
 }
 
 const reportPeriodLabel = computed(() => {
@@ -816,10 +817,10 @@ async function loadWorkspace(): Promise<void> {
     await loadDashboardSummary()
 
     if (!business.value) {
-      pageError.value = 'This business is not available in your workspace.'
+      pageError.value = tr('This business is not available in your workspace.')
     }
   } catch {
-    pageError.value = 'We could not load this business workspace.'
+    pageError.value = tr('We could not load this business workspace.')
   } finally {
     loading.value = false
   }
@@ -861,7 +862,7 @@ async function loadDashboardSummary(): Promise<void> {
     const controlsResponse = await api.get<{ data: ControlReport }>(`/api/v1/businesses/${businessId}/controls`)
     controlReport.value = controlsResponse.data.data
   } catch (error: unknown) {
-    dashboardError.value = getApiError(error, 'We could not load the financial overview.')
+    dashboardError.value = getApiError(error, tr('We could not load the financial overview.'))
   } finally {
     dashboardLoading.value = false
   }
@@ -876,7 +877,7 @@ async function downloadFinancialReport(format: 'xlsx' | 'pdf'): Promise<void> {
   try {
     await downloadFromApi(`/api/v1/businesses/${businessId}/reports/financial/export`, { type: reportType.value, from: reportFrom.value, to: reportTo.value, format, ...reportCounterpartyFilter.value }, `${reportType.value}.${format}`)
   } catch (error: unknown) {
-    reportError.value = getApiError(error, 'We could not export this report.')
+    reportError.value = getApiError(error, tr('We could not export this report.'))
   } finally {
     reportDownloading.value = ''
   }
@@ -892,7 +893,7 @@ async function loadFinancialReport(): Promise<void> {
     })
     financialReport.value = response.data.data
   } catch (error: unknown) {
-    reportError.value = getApiError(error, 'We could not generate this report.')
+    reportError.value = getApiError(error, tr('We could not generate this report.'))
   } finally {
     reportLoading.value = false
   }
@@ -905,7 +906,7 @@ function exportFinancialReport(): void {
   let csvRows: string[][]
   if (isInvoiceAgingReport(report)) {
     csvRows = [
-      ['Counterparty', 'Invoice', 'Due date', 'Aging bucket', 'Outstanding'],
+      [tr('Counterparty'), tr('Invoice'), tr('Due date'), tr('Aging bucket'), tr('Outstanding')],
       ...report.rows.flatMap((row) => row.invoices.map((invoice) => [
         row.counterparty_name,
         invoice.invoice_number,
@@ -913,14 +914,14 @@ function exportFinancialReport(): void {
         invoice.bucket.replaceAll('_', ' '),
         invoice.outstanding_amount,
       ])),
-      ['Totals', `${report.totals.invoice_count} invoices`, '', '', report.totals.total],
+      [tr('Totals'), `${report.totals.invoice_count} invoices`, '', '', report.totals.total],
     ]
   } else if (isVatSummaryReport(report)) {
     csvRows = [
-      ['Direction', 'Entry', 'Invoice', 'Date', 'Counterparty', 'NUI / Fiscal number', 'VAT code', 'VAT treatment', 'Rate', 'Taxable base', 'VAT', 'Gross'],
+      [tr('Direction'), tr('Entry'), tr('Invoice'), tr('Date'), tr('Counterparty'), tr('NUI / Fiscal number'), tr('VAT code'), tr('VAT treatment'), tr('Rate'), tr('Taxable base'), 'VAT', tr('Gross')],
       ...report.rows.map((row) => [
-        row.kind === 'sale' ? 'Sales' : 'Purchase',
-        row.entry_type === 'cancellation' ? 'Cancellation' : row.entry_type === 'credit_note' ? 'Credit note' : 'Invoice',
+        row.kind === 'sale' ? tr('Sales') : tr('Purchase'),
+        row.entry_type === 'cancellation' ? tr('Cancellation') : row.entry_type === 'credit_note' ? tr('Credit note') : tr('Invoice'),
         row.invoice_number,
         row.reported_on,
         row.counterparty_name,
@@ -933,10 +934,10 @@ function exportFinancialReport(): void {
         row.gross_amount,
       ]),
       [],
-      ['VAT code summary'],
-      ['Direction', 'VAT code', 'Label', 'Treatment', 'Rate', 'Taxable base', 'VAT', 'Gross'],
+      [tr('VAT code summary')],
+      [tr('Direction'), tr('VAT code'), tr('Label'), tr('Treatment'), tr('Rate'), tr('Taxable base'), 'VAT', tr('Gross')],
       ...report.summary.map((row) => [
-        row.kind === 'sale' ? 'Sales' : 'Purchase',
+        row.kind === 'sale' ? tr('Sales') : tr('Purchase'),
         row.vat_code,
         row.vat_label,
         row.treatment,
@@ -945,23 +946,23 @@ function exportFinancialReport(): void {
         row.tax_amount,
         row.gross_amount,
       ]),
-      ['Totals', '', '', '', '', report.totals.sales.net_amount, report.totals.sales.tax_amount, report.totals.sales.gross_amount],
-      ['Purchase totals', '', '', '', '', report.totals.purchases.net_amount, report.totals.purchases.tax_amount, report.totals.purchases.gross_amount],
-      ['Invoice VAT difference', '', '', '', '', '', report.totals.invoice_vat_difference, ''],
+      [tr('Totals'), '', '', '', '', report.totals.sales.net_amount, report.totals.sales.tax_amount, report.totals.sales.gross_amount],
+      [tr('Purchase totals'), '', '', '', '', report.totals.purchases.net_amount, report.totals.purchases.tax_amount, report.totals.purchases.gross_amount],
+      [tr('Invoice VAT difference'), '', '', '', '', '', report.totals.invoice_vat_difference, ''],
     ]
   } else {
     csvRows = [
-      ['Code', 'Account', 'Type', 'Debit', 'Credit'],
+      [tr('Code'), tr('Account'), tr('Type'), tr('Debit'), tr('Credit')],
       ...report.rows.map((row) => [row.code, row.name, row.account_type, row.debit, row.credit]),
     ]
 
     if (report.type === 'profit_loss' && report.totals.result !== '0.00') {
       const result = report.totals.result
       const isLoss = result.startsWith('-')
-      csvRows.push(['', 'Net result', '', isLoss ? result.slice(1) : '0.00', isLoss ? '0.00' : result])
+      csvRows.push(['', tr('Net result'), '', isLoss ? result.slice(1) : '0.00', isLoss ? '0.00' : result])
     }
 
-    csvRows.push(['', 'Totals', '', report.totals.debit, report.totals.credit])
+    csvRows.push(['', tr('Totals'), '', report.totals.debit, report.totals.credit])
   }
   const csv = csvRows.map((row) => row.map((value, index) => csvCell(value, index < 3)).join(',')).join('\r\n')
   const downloadUrl = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
@@ -1082,7 +1083,7 @@ async function loadVatCodes(): Promise<void> {
   } catch (error: unknown) {
     vatCodes.value = []
     vatRuleVersion.value = ''
-    formError.value = getApiError(error, 'No approved VAT codes are available for this invoice date.')
+    formError.value = getApiError(error, tr('No approved VAT codes are available for this invoice date.'))
   }
 }
 
@@ -1121,7 +1122,7 @@ async function createCashAccount(): Promise<void> {
     cashAccountForm.value = { name: '', account_id: '' }
     showCashAccountForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this cash account.')
+    formError.value = getApiError(error, tr('We could not save this cash account.'))
   } finally {
     saving.value = false
   }
@@ -1142,7 +1143,7 @@ async function createBankAccount(): Promise<void> {
     bankAccountForm.value = { bank_name: '', account_name: '', iban: '', account_id: '' }
     showBankAccountForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this bank account.')
+    formError.value = getApiError(error, tr('We could not save this bank account.'))
   } finally {
     saving.value = false
   }
@@ -1162,7 +1163,7 @@ async function loadBankTransactions(account: BankAccount): Promise<void> {
     bankTransactions.value = response.data.data
     if (categoriesResponse) bankCategories.value = categoriesResponse.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not load this bank statement activity.')
+    formError.value = getApiError(error, tr('We could not load this bank statement activity.'))
   }
 }
 
@@ -1182,9 +1183,9 @@ async function importBankStatement(): Promise<void> {
     bankStatementFile.value = null
     const { imported_count: imported, matched_count: matched, suggested_count: suggested } = response.data.meta
     await refreshBankAccount()
-    bankImportNotice.value = `Imported ${imported} line(s): ${matched} matched to entries already in the books, ${suggested} with a suggested category.`
+    bankImportNotice.value = trf('Imported {0} line(s): {1} matched to entries already in the books, {2} with a suggested category.', [imported, matched, suggested])
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not import this bank statement.')
+    formError.value = getApiError(error, tr('We could not import this bank statement.'))
   } finally {
     importingBankStatement.value = false
   }
@@ -1236,7 +1237,7 @@ async function reconcileBankTransaction(transaction: BankTransaction): Promise<v
     // Reconciling can replace the bank line a recorded payment created, so reload the list.
     await refreshBankAccount()
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not reconcile this bank transaction.')
+    formError.value = getApiError(error, tr('We could not reconcile this bank transaction.'))
   } finally {
     reconcilingTransactionId.value = null
   }
@@ -1283,10 +1284,10 @@ async function createPayment(): Promise<void> {
         journalEntries.value = journalsResponse.data.data
       }
     } catch {
-      formError.value = 'Payment saved. Reload the workspace to refresh invoice balances and journals.'
+      formError.value = tr('Payment saved. Reload the workspace to refresh invoice balances and journals.')
     }
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not record this payment.')
+    formError.value = getApiError(error, tr('We could not record this payment.'))
   } finally {
     saving.value = false
   }
@@ -1306,7 +1307,7 @@ async function createAccount(): Promise<void> {
     accountForm.value = { code: '', name: '', account_type: 'asset', normal_balance: 'debit', parent_id: '' }
     showAccountForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this account.')
+    formError.value = getApiError(error, tr('We could not save this account.'))
   } finally {
     saving.value = false
   }
@@ -1328,9 +1329,9 @@ async function applyKosovoChartTemplate(): Promise<void> {
     const { created, skipped, mapped } = response.data.data
     chartTemplateNotice.value = created.length
       ? `Added ${created.length} account(s) and mapped ${mapped.length} posting account(s).${skipped.length ? ` ${skipped.length} code(s) already existed and were left unchanged.` : ''}`
-      : 'Every account in the Kosovo standard chart already exists in this business.'
+      : tr('Every account in the Kosovo standard chart already exists in this business.')
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not add the Kosovo standard chart.')
+    formError.value = getApiError(error, tr('We could not add the Kosovo standard chart.'))
   } finally {
     saving.value = false
   }
@@ -1355,7 +1356,7 @@ async function savePostingAccounts(): Promise<void> {
     })
     setPostingAccounts(response.data.data)
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save the posting accounts.')
+    formError.value = getApiError(error, tr('We could not save the posting accounts.'))
   } finally {
     saving.value = false
   }
@@ -1371,7 +1372,7 @@ async function createPeriod(): Promise<void> {
     periodForm.value = { name: '', starts_on: '', ends_on: '' }
     showPeriodForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this accounting period.')
+    formError.value = getApiError(error, tr('We could not save this accounting period.'))
   } finally {
     saving.value = false
   }
@@ -1401,14 +1402,14 @@ async function createJournalDraft(): Promise<void> {
     ]
     showJournalForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this journal draft.')
+    formError.value = getApiError(error, tr('We could not save this journal draft.'))
   } finally {
     saving.value = false
   }
 }
 
 async function postJournal(entry: JournalEntry): Promise<void> {
-  if (!window.confirm('Post this journal entry? Posted entries are locked.')) return
+  if (!window.confirm(tr('Post this journal entry? Posted entries are locked.'))) return
 
   saving.value = true
   formError.value = ''
@@ -1417,14 +1418,14 @@ async function postJournal(entry: JournalEntry): Promise<void> {
     const response = await api.post<{ data: JournalEntry }>(`/api/v1/businesses/${businessId}/journal-entries/${entry.id}/post`)
     journalEntries.value = journalEntries.value.map((item) => item.id === entry.id ? response.data.data : item)
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This journal entry could not be posted.')
+    formError.value = getApiError(error, tr('This journal entry could not be posted.'))
   } finally {
     saving.value = false
   }
 }
 
 async function removeJournalDraft(entry: JournalEntry): Promise<void> {
-  if (!window.confirm('Remove this draft journal entry?')) return
+  if (!window.confirm(tr('Remove this draft journal entry?'))) return
 
   saving.value = true
   formError.value = ''
@@ -1433,7 +1434,7 @@ async function removeJournalDraft(entry: JournalEntry): Promise<void> {
     await api.delete(`/api/v1/businesses/${businessId}/journal-entries/${entry.id}`)
     journalEntries.value = journalEntries.value.filter((item) => item.id !== entry.id)
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This draft could not be removed.')
+    formError.value = getApiError(error, tr('This draft could not be removed.'))
   } finally {
     saving.value = false
   }
@@ -1441,13 +1442,13 @@ async function removeJournalDraft(entry: JournalEntry): Promise<void> {
 
 async function reverseJournal(entry: JournalEntry): Promise<void> {
   if (entry.status !== 'posted' || entry.reversal_of_id !== null) return
-  if (!window.confirm(`Create a reversing draft for “${entry.description}”?`)) return
+  if (!window.confirm(trf('Create a reversing draft for “{0}”?', [entry.description]))) return
 
   const reversalDate = todayIsoDate()
   const period = openPeriods.value.find((item) => item.starts_on <= reversalDate && item.ends_on >= reversalDate)
 
   if (!period) {
-    formError.value = 'Create or open an accounting period that contains today before reversing this entry.'
+    formError.value = tr('Create or open an accounting period that contains today before reversing this entry.')
     return
   }
 
@@ -1461,7 +1462,7 @@ async function reverseJournal(entry: JournalEntry): Promise<void> {
     })
     journalEntries.value = [response.data.data, ...journalEntries.value]
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'A reversal draft could not be created.')
+    formError.value = getApiError(error, tr('A reversal draft could not be created.'))
   } finally {
     saving.value = false
   }
@@ -1475,7 +1476,7 @@ async function reviewPeriodClosing(period: AccountingPeriod): Promise<void> {
     const response = await api.get<{ data: PeriodClosingReview }>(`/api/v1/businesses/${businessId}/periods/${period.id}/closing-checks`)
     closingReview.value = response.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'The period close review could not be loaded.')
+    formError.value = getApiError(error, tr('The period close review could not be loaded.'))
   } finally {
     closingReviewLoading.value = false
   }
@@ -1483,7 +1484,7 @@ async function reviewPeriodClosing(period: AccountingPeriod): Promise<void> {
 
 async function closePeriod(period: AccountingPeriod): Promise<void> {
   if (!closingReview.value?.can_close || closingReview.value.period_id !== period.id) return
-  if (!window.confirm(`Close ${period.name}? New journal entries can no longer be posted to it.`)) return
+  if (!window.confirm(trf('Close {0}? New journal entries can no longer be posted to it.', [period.name]))) return
 
   saving.value = true
   formError.value = ''
@@ -1493,7 +1494,7 @@ async function closePeriod(period: AccountingPeriod): Promise<void> {
     periods.value = periods.value.map((item) => item.id === period.id ? response.data.data : item)
     closingReview.value = null
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This period could not be closed.')
+    formError.value = getApiError(error, tr('This period could not be closed.'))
   } finally {
     saving.value = false
   }
@@ -1504,7 +1505,7 @@ async function reloadPeriods(): Promise<void> {
     const response = await api.get<{ data: AccountingPeriod[] }>(`/api/v1/businesses/${businessId}/periods`)
     periods.value = response.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not reload the periods.')
+    formError.value = getApiError(error, tr('We could not reload the periods.'))
   }
 }
 
@@ -1549,20 +1550,20 @@ async function openCounterpartyCard(party: Counterparty): Promise<void> {
     })
     counterpartyStatement.value = response.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not load this contact card.')
+    formError.value = getApiError(error, tr('We could not load this contact card.'))
   } finally {
     statementLoading.value = false
   }
 }
 
 function statementSideLabel(section: StatementSection): string {
-  return section.kind === 'sale' ? 'Receivable (they owe you)' : 'Payable (you owe them)'
+  return section.kind === 'sale' ? tr('Receivable (they owe you)') : tr('Payable (you owe them)')
 }
 
 function statementLineLabel(line: StatementSection['lines'][number]): string {
   if (line.type === 'invoice') return `Invoice ${line.invoice_number}`
   if (line.type === 'cancellation') return `Cancelled ${line.invoice_number}`
-  if (line.type === 'credit_note') return `Credit note ${line.invoice_number}`
+  if (line.type === 'credit_note') return trf('Credit note {0}', [line.invoice_number])
   return `Payment for ${line.invoice_number}${line.reference ? ` · ${line.reference}` : ''}`
 }
 
@@ -1573,9 +1574,9 @@ function exportCounterpartyStatement(): void {
   const rows: string[][] = [[statement.counterparty.name, statement.counterparty.nui ?? ''], [`${statement.from} – ${statement.to}`, statement.currency]]
 
   for (const section of statement.sections) {
-    rows.push([], [statementSideLabel(section)], ['Date', 'Entry', 'Increase', 'Decrease', 'Balance'], ['', 'Opening balance', '', '', section.opening_balance])
+    rows.push([], [statementSideLabel(section)], [tr('Date'), tr('Entry'), tr('Increase'), tr('Decrease'), tr('Balance')], ['', tr('Opening balance'), '', '', section.opening_balance])
     rows.push(...section.lines.map((line) => [line.date, statementLineLabel(line), line.increase, line.decrease, line.balance]))
-    rows.push(['', 'Closing balance', '', '', section.closing_balance])
+    rows.push(['', tr('Closing balance'), '', '', section.closing_balance])
   }
 
   const csv = rows.map((row) => row.map((value, index) => csvCell(value, index < 2)).join(',')).join('\r\n')
@@ -1602,7 +1603,7 @@ async function loadAuditTrail(subject: 'business' | 'counterparty', subjectId: n
     const response = await api.get<{ data: AuditEntry[] }>(`/api/v1/businesses/${businessId}/audit-logs`, { params: { subject, subject_id: subjectId } })
     return response.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not load the change history.')
+    formError.value = getApiError(error, tr('We could not load the change history.'))
     return []
   }
 }
@@ -1668,7 +1669,7 @@ async function saveBusinessProfile(): Promise<void> {
     business.value = { ...response.data.data, role: business.value?.role ?? null, abilities: business.value?.abilities ?? null }
     if (canViewHistory.value) businessHistory.value = await loadAuditTrail('business', businessId)
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save the business details.')
+    formError.value = getApiError(error, tr('We could not save the business details.'))
   } finally {
     saving.value = false
   }
@@ -1704,7 +1705,7 @@ async function createCounterparty(): Promise<void> {
     editingCounterpartyId.value = null
     showCounterpartyForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this contact.')
+    formError.value = getApiError(error, tr('We could not save this contact.'))
   } finally {
     saving.value = false
   }
@@ -1740,7 +1741,7 @@ async function createInventoryItem(): Promise<void> {
     inventoryItemForm.value = { sku: '', barcode: '', name: '', description: '', unit: 'piece', purchase_price: '0.0000', sale_price: '0.0000', minimum_quantity: '0.0000', supplier_counterparty_id: '' }
     showInventoryItemForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this inventory item.')
+    formError.value = getApiError(error, tr('We could not save this inventory item.'))
   } finally {
     saving.value = false
   }
@@ -1756,7 +1757,7 @@ async function createWarehouse(): Promise<void> {
     warehouseForm.value = { name: '', address: '', is_default: false }
     showWarehouseForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this warehouse.')
+    formError.value = getApiError(error, tr('We could not save this warehouse.'))
   } finally {
     saving.value = false
   }
@@ -1789,7 +1790,7 @@ async function createStockMovement(): Promise<void> {
     if (stockMovementFileInput.value) stockMovementFileInput.value.value = ''
     showStockMovementForm.value = false
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not record this stock movement.')
+    formError.value = getApiError(error, tr('We could not record this stock movement.'))
   } finally {
     saving.value = false
   }
@@ -1844,7 +1845,7 @@ async function createInvoiceDraft(): Promise<void> {
     if (billFileInput.value) billFileInput.value.value = ''
     lineDrafts.value = [{ description: '', quantity: '1', unit: '', unit_price: '0.00', discount_amount: '0.00', vat_code: '', inventory_item_id: '', warehouse_id: '' }]
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this draft.')
+    formError.value = getApiError(error, tr('We could not save this draft.'))
   } finally {
     saving.value = false
   }
@@ -1867,7 +1868,7 @@ async function issueInvoice(invoice: Invoice): Promise<void> {
       journalEntries.value = journalsResponse.data.data
     }
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This invoice could not be issued.')
+    formError.value = getApiError(error, tr('This invoice could not be issued.'))
   } finally {
     saving.value = false
   }
@@ -1891,7 +1892,7 @@ async function deleteDraftInvoice(invoice: Invoice): Promise<void> {
     await api.delete(`/api/v1/businesses/${businessId}/invoices/${invoice.id}`)
     invoices.value = invoices.value.filter((item) => item.id !== invoice.id)
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This draft could not be deleted.')
+    formError.value = getApiError(error, tr('This draft could not be deleted.'))
   } finally {
     saving.value = false
   }
@@ -1913,7 +1914,7 @@ async function cancelInvoice(invoice: Invoice): Promise<void> {
     const journalsResponse = await api.get<{ data: JournalEntry[] }>(`/api/v1/businesses/${businessId}/journal-entries`)
     journalEntries.value = journalsResponse.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This invoice could not be cancelled.')
+    formError.value = getApiError(error, tr('This invoice could not be cancelled.'))
   } finally {
     saving.value = false
   }
@@ -1931,7 +1932,7 @@ async function openPayroll(): Promise<void> {
     employees.value = employeesResponse.data.data
     payrollRuns.value = runsResponse.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not load payroll.')
+    formError.value = getApiError(error, tr('We could not load payroll.'))
   }
 }
 
@@ -1997,7 +1998,7 @@ async function saveEmployee(): Promise<void> {
     editingEmployeeId.value = null
     employeeForm.value = emptyEmployeeForm()
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not save this employee.')
+    formError.value = getApiError(error, tr('We could not save this employee.'))
   } finally {
     saving.value = false
   }
@@ -2020,7 +2021,7 @@ async function createPayrollRun(): Promise<void> {
     payrollRuns.value = [response.data.data, ...payrollRuns.value]
     selectedPayrollRun.value = response.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not calculate this payroll.')
+    formError.value = getApiError(error, tr('We could not calculate this payroll.'))
   } finally {
     saving.value = false
   }
@@ -2033,7 +2034,7 @@ async function openPayrollRun(run: PayrollRun): Promise<void> {
     const response = await api.get<{ data: PayrollRun }>(`/api/v1/businesses/${businessId}/payroll-runs/${run.id}`)
     selectedPayrollRun.value = response.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not load this payroll.')
+    formError.value = getApiError(error, tr('We could not load this payroll.'))
   }
 }
 
@@ -2048,7 +2049,7 @@ async function approvePayrollRun(run: PayrollRun): Promise<void> {
     const journalsResponse = await api.get<{ data: JournalEntry[] }>(`/api/v1/businesses/${businessId}/journal-entries`)
     journalEntries.value = journalsResponse.data.data
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This payroll could not be approved.')
+    formError.value = getApiError(error, tr('This payroll could not be approved.'))
   } finally {
     saving.value = false
   }
@@ -2063,7 +2064,7 @@ async function deletePayrollRun(run: PayrollRun): Promise<void> {
     payrollRuns.value = payrollRuns.value.filter((item) => item.id !== run.id)
     selectedPayrollRun.value = null
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'This payroll could not be deleted.')
+    formError.value = getApiError(error, tr('This payroll could not be deleted.'))
   } finally {
     saving.value = false
   }
@@ -2077,13 +2078,13 @@ async function downloadPayrollWmList(run: PayrollRun): Promise<void> {
     const check = await api.get<{ data: { problems: string[] } }>(`/api/v1/businesses/${businessId}/payroll-runs/${run.id}/atk-wm`)
 
     if (check.data.data.problems.length) {
-      formError.value = `Fix before declaring in EDI: ${check.data.data.problems.join(' ')}`
+      formError.value = trf('Fix before declaring in EDI: {0}', [check.data.data.problems.join(' ')])
       return
     }
 
     await downloadFromApi(`/api/v1/businesses/${businessId}/payroll-runs/${run.id}/atk-wm`, { download: 1 }, `Lista-e-pagave-WM-${run.period_year}-${String(run.period_month).padStart(2, '0')}.xlsx`)
   } catch (error: unknown) {
-    formError.value = getApiError(error, 'We could not export the WM wage list.')
+    formError.value = getApiError(error, tr('We could not export the WM wage list.'))
   } finally {
     saving.value = false
   }
@@ -2091,10 +2092,10 @@ async function downloadPayrollWmList(run: PayrollRun): Promise<void> {
 
 function exportPayrollRun(run: PayrollRun): void {
   const rows: string[][] = [
-    [`Payroll ${payrollPeriodLabel(run)}`, `Pay date ${run.pay_date}`, `Rules ${run.rule_version ?? ''}`],
-    ['Employee', 'Employment', 'Days worked', 'Base', 'Additions', 'Gross', 'Employee pension', 'Employer pension', 'Taxable income', 'Income tax', 'Net'],
-    ...(run.lines ?? []).map((line) => [line.employee_name, line.is_primary_employment ? 'Primary' : 'Secondary', `${line.worked_days ?? ''}/${line.days_in_month ?? ''}`, line.base_salary, line.additions, line.gross_salary, line.employee_contribution, line.employer_contribution, line.taxable_income, line.income_tax, line.net_salary]),
-    ['Totals', '', '', '', '', run.gross_total, run.employee_contribution_total, run.employer_contribution_total, '', run.income_tax_total, run.net_total],
+    [`Payroll ${payrollPeriodLabel(run)}`, trf('Pay date {0}', [run.pay_date]), `Rules ${run.rule_version ?? ''}`],
+    [tr('Employee'), tr('Employment'), tr('Days worked'), tr('Base'), tr('Additions'), tr('Gross'), tr('Employee pension'), tr('Employer pension'), tr('Taxable income'), tr('Income tax'), tr('Net')],
+    ...(run.lines ?? []).map((line) => [line.employee_name, line.is_primary_employment ? tr('Primary') : tr('Secondary'), `${line.worked_days ?? ''}/${line.days_in_month ?? ''}`, line.base_salary, line.additions, line.gross_salary, line.employee_contribution, line.employer_contribution, line.taxable_income, line.income_tax, line.net_salary]),
+    [tr('Totals'), '', '', '', '', run.gross_total, run.employee_contribution_total, run.employer_contribution_total, '', run.income_tax_total, run.net_total],
   ]
   const csv = rows.map((row) => row.map((value, index) => csvCell(value, index < 2)).join(',')).join('\r\n')
   const downloadUrl = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }))
@@ -2147,19 +2148,19 @@ function getApiError(error: unknown, fallback: string): string {
 
       <section v-if="activeSection === 'reports'" class="content-panel">
         <div class="panel-heading">
-          <div><p class="eyebrow">Accounting reports</p><h2>Financial reports</h2></div>
+          <div><p class="eyebrow">{{ tr('Accounting reports') }}</p><h2>{{ tr('Financial reports') }}</h2></div>
           <div v-if="reportsView === 'statements'" class="report-actions">
-            <button class="text-button" type="button" :disabled="!financialReport" @click="printFinancialReport">Print / PDF</button>
-            <button class="text-button" type="button" :disabled="!financialReport" @click="exportFinancialReport">Export CSV</button>
-            <button class="text-button" type="button" :disabled="!financialReport || reportDownloading !== ''" @click="downloadFinancialReport('xlsx')">{{ reportDownloading === 'xlsx' ? 'Exporting…' : 'Excel' }}</button>
-            <button class="text-button" type="button" :disabled="!financialReport || reportDownloading !== ''" @click="downloadFinancialReport('pdf')">{{ reportDownloading === 'pdf' ? 'Exporting…' : 'PDF file' }}</button>
+            <button class="text-button" type="button" :disabled="!financialReport" @click="printFinancialReport">{{ tr('Print / PDF') }}</button>
+            <button class="text-button" type="button" :disabled="!financialReport" @click="exportFinancialReport">{{ tr('Export CSV') }}</button>
+            <button class="text-button" type="button" :disabled="!financialReport || reportDownloading !== ''" @click="downloadFinancialReport('xlsx')">{{ reportDownloading === 'xlsx' ? tr('Exporting…') : tr('Excel') }}</button>
+            <button class="text-button" type="button" :disabled="!financialReport || reportDownloading !== ''" @click="downloadFinancialReport('pdf')">{{ reportDownloading === 'pdf' ? tr('Exporting…') : tr('PDF file') }}</button>
           </div>
         </div>
-        <nav class="kind-tabs no-print" aria-label="Report groups">
-          <button :class="{ active: reportsView === 'statements' }" @click="reportsView = 'statements'">Statements</button>
-          <button :class="{ active: reportsView === 'ledger' }" @click="reportsView = 'ledger'">Account cards & cash book</button>
-          <button :class="{ active: reportsView === 'operations' }" @click="reportsView = 'operations'">Turnover, stock, payroll, assets</button>
-          <button :class="{ active: reportsView === 'atk' }" @click="reportsView = 'atk'">ATK · VAT books</button>
+        <nav class="kind-tabs no-print" :aria-label="tr('Report groups')">
+          <button :class="{ active: reportsView === 'statements' }" @click="reportsView = 'statements'">{{ tr('Statements') }}</button>
+          <button :class="{ active: reportsView === 'ledger' }" @click="reportsView = 'ledger'">{{ tr('Account cards & cash book') }}</button>
+          <button :class="{ active: reportsView === 'operations' }" @click="reportsView = 'operations'">{{ tr('Turnover, stock, payroll, assets') }}</button>
+          <button :class="{ active: reportsView === 'atk' }" @click="reportsView = 'atk'">{{ tr('ATK · VAT books') }}</button>
         </nav>
         <OperationalReportsPanel v-if="reportsView === 'operations'" :business-id="businessId" :currency="business.currency" :counterparties="counterparties" :warehouses="warehouses" :units="units" :can-view-payroll="canViewPayroll" />
         <AtkFilingsPanel v-if="reportsView === 'atk'" :business-id="businessId" :currency="business.currency" :vat-registered="business.vat_status === 'registered'" />
@@ -2167,269 +2168,269 @@ function getApiError(error: unknown, fallback: string): string {
         <div v-show="reportsView === 'statements'">
         <div v-if="financialReport" class="print-only report-print-heading">
           <strong>{{ reportTypeLabels[financialReport.type] }}</strong>
-          <span>{{ business.legal_name }} · NUI {{ business.nui }}</span>
+          <span>{{ business.legal_name }} {{ tr('· NUI') }} {{ business.nui }}</span>
           <span>{{ reportPeriodLabel }} · {{ business.currency }}</span>
         </div>
         <form class="report-filters" @submit.prevent="loadFinancialReport">
-          <label>Report<select v-model="reportType"><option value="trial_balance">Trial balance</option><option value="profit_loss">Profit and loss</option><option value="balance_sheet">Balance sheet</option><option value="vat_summary">VAT summary</option><option value="receivable_aging">Customer aging</option><option value="payable_aging">Supplier aging</option></select></label>
-          <label v-if="reportType !== 'receivable_aging' && reportType !== 'payable_aging'">From<input v-model="reportFrom" type="date" required /></label>
-          <label>{{ reportType === 'receivable_aging' || reportType === 'payable_aging' ? 'As of' : 'To' }}<input v-model="reportTo" type="date" required /></label>
-          <label v-if="reportType === 'receivable_aging' || reportType === 'payable_aging'">{{ reportType === 'receivable_aging' ? 'Customer' : 'Supplier' }}<select v-model="reportCounterpartyId"><option value="">All</option><option v-for="party in counterparties.filter((party) => party.type === (reportType === 'receivable_aging' ? 'customer' : 'supplier') || party.type === 'both')" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
-          <label v-if="units.length && (reportType === 'trial_balance' || reportType === 'profit_loss')">Unit<select v-model="reportUnitId"><option value="">Whole business</option><option v-for="unit in units" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
-          <button class="primary-button" type="submit" :disabled="reportLoading">{{ reportLoading ? 'Generating…' : 'Generate report' }}</button>
+          <label>{{ tr('Report') }}<select v-model="reportType"><option value="trial_balance">{{ tr('Trial balance') }}</option><option value="profit_loss">{{ tr('Profit and loss') }}</option><option value="balance_sheet">{{ tr('Balance sheet') }}</option><option value="vat_summary">{{ tr('VAT summary') }}</option><option value="receivable_aging">{{ tr('Customer aging') }}</option><option value="payable_aging">{{ tr('Supplier aging') }}</option></select></label>
+          <label v-if="reportType !== 'receivable_aging' && reportType !== 'payable_aging'">{{ tr('From') }}<input v-model="reportFrom" type="date" required /></label>
+          <label>{{ reportType === 'receivable_aging' || reportType === 'payable_aging' ? tr('As of') : tr('To') }}<input v-model="reportTo" type="date" required /></label>
+          <label v-if="reportType === 'receivable_aging' || reportType === 'payable_aging'">{{ reportType === 'receivable_aging' ? tr('Customer') : tr('Supplier') }}<select v-model="reportCounterpartyId"><option value="">{{ tr('All') }}</option><option v-for="party in counterparties.filter((party) => party.type === (reportType === 'receivable_aging' ? 'customer' : 'supplier') || party.type === 'both')" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
+          <label v-if="units.length && (reportType === 'trial_balance' || reportType === 'profit_loss')">{{ tr('Unit') }}<select v-model="reportUnitId"><option value="">{{ tr('Whole business') }}</option><option v-for="unit in units" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
+          <button class="primary-button" type="submit" :disabled="reportLoading">{{ reportLoading ? tr('Generating…') : tr('Generate report') }}</button>
         </form>
         <p v-if="reportError" class="error-text" role="alert">{{ reportError }}</p>
         <div v-if="financialReport" class="report-table-wrap">
           <template v-if="vatFinancialReport">
             <div class="summary-grid vat-summary-grid">
-              <article class="summary-card"><span>Sales VAT</span><strong>{{ formatMoney(vatFinancialReport.totals.sales.tax_amount) }}</strong><small>{{ formatMoney(vatFinancialReport.totals.sales.net_amount) }} taxable base</small></article>
-              <article class="summary-card"><span>Purchase VAT</span><strong>{{ formatMoney(vatFinancialReport.totals.purchases.tax_amount) }}</strong><small>{{ formatMoney(vatFinancialReport.totals.purchases.net_amount) }} taxable base</small></article>
-              <article class="summary-card"><span>Invoice VAT difference</span><strong>{{ formatMoney(vatFinancialReport.totals.invoice_vat_difference) }}</strong><small>Sales VAT minus purchase VAT</small></article>
-              <article class="summary-card"><span>Invoices</span><strong>{{ vatFinancialReport.totals.invoice_count }}</strong><small>{{ formatDate(vatFinancialReport.from) }} to {{ formatDate(vatFinancialReport.to) }}</small></article>
+              <article class="summary-card"><span>{{ tr('Sales VAT') }}</span><strong>{{ formatMoney(vatFinancialReport.totals.sales.tax_amount) }}</strong><small>{{ formatMoney(vatFinancialReport.totals.sales.net_amount) }} {{ tr('taxable base') }}</small></article>
+              <article class="summary-card"><span>{{ tr('Purchase VAT') }}</span><strong>{{ formatMoney(vatFinancialReport.totals.purchases.tax_amount) }}</strong><small>{{ formatMoney(vatFinancialReport.totals.purchases.net_amount) }} {{ tr('taxable base') }}</small></article>
+              <article class="summary-card"><span>{{ tr('Invoice VAT difference') }}</span><strong>{{ formatMoney(vatFinancialReport.totals.invoice_vat_difference) }}</strong><small>{{ tr('Sales VAT minus purchase VAT') }}</small></article>
+              <article class="summary-card"><span>{{ tr('Invoices') }}</span><strong>{{ vatFinancialReport.totals.invoice_count }}</strong><small>{{ formatDate(vatFinancialReport.from) }} {{ tr('to') }} {{ formatDate(vatFinancialReport.to) }}</small></article>
             </div>
-            <p v-if="vatFinancialReport.totals.missing_counterparty_nui_count" class="form-note report-note">{{ vatFinancialReport.totals.missing_counterparty_nui_count }} invoice(s) have no counterparty NUI/fiscal number. Review identifiers before preparing the TAK purchase or sales book.</p>
-            <h3>Totals by VAT code</h3>
+            <p v-if="vatFinancialReport.totals.missing_counterparty_nui_count" class="form-note report-note">{{ vatFinancialReport.totals.missing_counterparty_nui_count }} {{ tr('invoice(s) have no counterparty NUI/fiscal number. Review identifiers before preparing the TAK purchase or sales book.') }}</p>
+            <h3>{{ tr('Totals by VAT code') }}</h3>
             <table class="report-table">
-              <thead><tr><th>Direction</th><th>Code</th><th>Treatment</th><th>Rate</th><th>Taxable base</th><th>VAT</th><th>Gross</th></tr></thead>
-              <tbody><tr v-for="(row, index) in vatFinancialReport.summary" :key="`${row.kind}-${row.vat_code}-${index}`"><td>{{ row.kind === 'sale' ? 'Sales' : 'Purchase' }}</td><td>{{ row.vat_code }} · {{ row.vat_label }}</td><td>{{ row.treatment.replaceAll('_', ' ') }}</td><td>{{ row.rate_percent }}%</td><td>{{ formatMoney(row.net_amount) }}</td><td>{{ formatMoney(row.tax_amount) }}</td><td>{{ formatMoney(row.gross_amount) }}</td></tr></tbody>
+              <thead><tr><th>{{ tr('Direction') }}</th><th>{{ tr('Code') }}</th><th>{{ tr('Treatment') }}</th><th>{{ tr('Rate') }}</th><th>{{ tr('Taxable base') }}</th><th>{{ tr('VAT') }}</th><th>{{ tr('Gross') }}</th></tr></thead>
+              <tbody><tr v-for="(row, index) in vatFinancialReport.summary" :key="`${row.kind}-${row.vat_code}-${index}`"><td>{{ row.kind === 'sale' ? tr('Sales') : tr('Purchase') }}</td><td>{{ row.vat_code }} · {{ row.vat_label }}</td><td>{{ trValue(row.treatment) }}</td><td>{{ row.rate_percent }}%</td><td>{{ formatMoney(row.net_amount) }}</td><td>{{ formatMoney(row.tax_amount) }}</td><td>{{ formatMoney(row.gross_amount) }}</td></tr></tbody>
             </table>
-            <h3>Invoice details</h3>
+            <h3>{{ tr('Invoice details') }}</h3>
             <table class="report-table">
-              <thead><tr><th>Direction</th><th>Invoice</th><th>Date</th><th>Customer / supplier</th><th>NUI / fiscal number</th><th>VAT code</th><th>Base</th><th>VAT</th><th>Total</th></tr></thead>
-              <tbody><tr v-for="(row, index) in vatFinancialReport.rows" :key="`${row.invoice_id}-${row.vat_code}-${index}`"><td>{{ row.kind === 'sale' ? 'Sales' : 'Purchase' }}</td><td>{{ row.invoice_number }}<template v-if="row.entry_type !== 'invoice'"> · {{ row.entry_type.replace('_', ' ') }}</template></td><td>{{ formatDate(row.reported_on) }}</td><td>{{ row.counterparty_name }}</td><td>{{ row.counterparty_nui || 'Missing' }}</td><td>{{ row.vat_code }} · {{ row.rate_percent }}%</td><td>{{ formatMoney(row.net_amount) }}</td><td>{{ formatMoney(row.tax_amount) }}</td><td>{{ formatMoney(row.gross_amount) }}</td></tr></tbody>
+              <thead><tr><th>{{ tr('Direction') }}</th><th>{{ tr('Invoice') }}</th><th>{{ tr('Date') }}</th><th>{{ tr('Customer / supplier') }}</th><th>{{ tr('NUI / fiscal number') }}</th><th>{{ tr('VAT code') }}</th><th>{{ tr('Base') }}</th><th>{{ tr('VAT') }}</th><th>{{ tr('Total') }}</th></tr></thead>
+              <tbody><tr v-for="(row, index) in vatFinancialReport.rows" :key="`${row.invoice_id}-${row.vat_code}-${index}`"><td>{{ row.kind === 'sale' ? tr('Sales') : tr('Purchase') }}</td><td>{{ row.invoice_number }}<template v-if="row.entry_type !== 'invoice'"> · {{ trValue(row.entry_type) }}</template></td><td>{{ formatDate(row.reported_on) }}</td><td>{{ row.counterparty_name }}</td><td>{{ row.counterparty_nui || tr('Missing') }}</td><td>{{ row.vat_code }} · {{ row.rate_percent }}%</td><td>{{ formatMoney(row.net_amount) }}</td><td>{{ formatMoney(row.tax_amount) }}</td><td>{{ formatMoney(row.gross_amount) }}</td></tr></tbody>
             </table>
-            <p class="form-note report-note">Based on issued invoices and their saved VAT rule snapshots. This review report does not account for VAT adjustments, import/reverse-charge entries, or deductible-input-tax limits; it is not a TAK filing or an EDI upload file.</p>
+            <p class="form-note report-note">{{ tr('Based on issued invoices and their saved VAT rule snapshots. This review report does not account for VAT adjustments, import/reverse-charge entries, or deductible-input-tax limits; it is not a TAK filing or an EDI upload file.') }}</p>
           </template>
           <table v-if="agingFinancialReport" class="report-table aging-report-table">
-            <thead><tr><th>{{ agingFinancialReport.type === 'receivable_aging' ? 'Customer' : 'Supplier' }}</th><th>Current</th><th>1–30 days</th><th>31–60 days</th><th>61–90 days</th><th>Over 90 days</th><th>Total</th></tr></thead>
+            <thead><tr><th>{{ agingFinancialReport.type === 'receivable_aging' ? tr('Customer') : tr('Supplier') }}</th><th>{{ tr('Current') }}</th><th>{{ tr('1–30 days') }}</th><th>{{ tr('31–60 days') }}</th><th>{{ tr('61–90 days') }}</th><th>{{ tr('Over 90 days') }}</th><th>{{ tr('Total') }}</th></tr></thead>
             <tbody>
               <tr v-for="row in agingFinancialReport.rows" :key="row.counterparty_id">
-                <td><details class="aging-invoices"><summary>{{ row.counterparty_name }} · {{ row.invoice_count }} invoices</summary><ul><li v-for="invoice in row.invoices" :key="invoice.id">{{ invoice.invoice_number }} · due {{ formatDate(invoice.due_on) }} · {{ invoice.bucket.replaceAll('_', ' ') }} · {{ formatMoney(invoice.outstanding_amount) }}</li></ul></details></td>
+                <td><details class="aging-invoices"><summary>{{ row.counterparty_name }} · {{ row.invoice_count }} {{ tr('invoices') }}</summary><ul><li v-for="invoice in row.invoices" :key="invoice.id">{{ invoice.invoice_number }} {{ tr('· due') }} {{ formatDate(invoice.due_on) }} · {{ trValue(invoice.bucket) }} · {{ formatMoney(invoice.outstanding_amount) }}</li></ul></details></td>
                 <td>{{ formatMoney(row.current) }}</td><td>{{ formatMoney(row.days_1_30) }}</td><td>{{ formatMoney(row.days_31_60) }}</td><td>{{ formatMoney(row.days_61_90) }}</td><td>{{ formatMoney(row.days_over_90) }}</td><td><strong>{{ formatMoney(row.total) }}</strong></td>
               </tr>
             </tbody>
-            <tfoot><tr><th>{{ agingFinancialReport.totals.invoice_count }} open invoices</th><th>{{ formatMoney(agingFinancialReport.totals.current) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_1_30) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_31_60) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_61_90) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_over_90) }}</th><th>{{ formatMoney(agingFinancialReport.totals.total) }}</th></tr></tfoot>
+            <tfoot><tr><th>{{ agingFinancialReport.totals.invoice_count }} {{ tr('open invoices') }}</th><th>{{ formatMoney(agingFinancialReport.totals.current) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_1_30) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_31_60) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_61_90) }}</th><th>{{ formatMoney(agingFinancialReport.totals.days_over_90) }}</th><th>{{ formatMoney(agingFinancialReport.totals.total) }}</th></tr></tfoot>
           </table>
           <table v-else-if="ledgerFinancialReport" class="report-table">
-            <thead><tr><th>Code</th><th>Account</th><th>Type</th><th>Debit</th><th>Credit</th></tr></thead>
+            <thead><tr><th>{{ tr('Code') }}</th><th>{{ tr('Account') }}</th><th>{{ tr('Type') }}</th><th>{{ tr('Debit') }}</th><th>{{ tr('Credit') }}</th></tr></thead>
             <tbody>
-              <tr v-for="(row, index) in ledgerFinancialReport.rows" :key="`${row.code}-${index}`"><td>{{ row.code || '—' }}</td><td>{{ row.name }}</td><td>{{ row.account_type.replace('_', ' ') }}</td><td>{{ formatMoney(row.debit) }}</td><td>{{ formatMoney(row.credit) }}</td></tr>
+              <tr v-for="(row, index) in ledgerFinancialReport.rows" :key="`${row.code}-${index}`"><td>{{ row.code || '—' }}</td><td>{{ row.name }}</td><td>{{ trValue(row.account_type) }}</td><td>{{ formatMoney(row.debit) }}</td><td>{{ formatMoney(row.credit) }}</td></tr>
             </tbody>
-            <tfoot><tr><th colspan="3">Totals</th><th>{{ formatMoney(ledgerFinancialReport.totals.debit) }}</th><th>{{ formatMoney(ledgerFinancialReport.totals.credit) }}</th></tr></tfoot>
+            <tfoot><tr><th colspan="3">{{ tr('Totals') }}</th><th>{{ formatMoney(ledgerFinancialReport.totals.debit) }}</th><th>{{ formatMoney(ledgerFinancialReport.totals.credit) }}</th></tr></tfoot>
           </table>
-          <p v-if="agingFinancialReport" class="form-note report-note">Outstanding balances are calculated from invoice allocations recorded on or before {{ formatDate(agingFinancialReport.as_of) }}. Invoices without a due date are shown as current.</p>
-          <p v-else-if="ledgerFinancialReport" class="form-note report-note">{{ ledgerFinancialReport.type === 'trial_balance' ? `Account balances through ${formatDate(ledgerFinancialReport.to)}.` : ledgerFinancialReport.type === 'balance_sheet' ? `Assets, liabilities and equity as of ${formatDate(ledgerFinancialReport.to)}.` : `Posted revenue and expense movements from ${formatDate(ledgerFinancialReport.from)} to ${formatDate(ledgerFinancialReport.to)}. Net result: ${formatMoney(ledgerFinancialReport.totals.result)}.` }}</p>
+          <p v-if="agingFinancialReport" class="form-note report-note">{{ tr('Outstanding balances are calculated from invoice allocations recorded on or before') }} {{ formatDate(agingFinancialReport.as_of) }}{{ tr('. Invoices without a due date are shown as current.') }}</p>
+          <p v-else-if="ledgerFinancialReport" class="form-note report-note">{{ ledgerFinancialReport.type === 'trial_balance' ? trf('Account balances through {0}.', [formatDate(ledgerFinancialReport.to)]) : ledgerFinancialReport.type === 'balance_sheet' ? trf('Assets, liabilities and equity as of {0}.', [formatDate(ledgerFinancialReport.to)]) : trf('Posted revenue and expense movements from {0} to {1}. Net result: {2}.', [formatDate(ledgerFinancialReport.from), formatDate(ledgerFinancialReport.to), formatMoney(ledgerFinancialReport.totals.result)]) }}</p>
         </div>
-        <p v-else-if="!reportLoading" class="empty-message">Choose a report and date range, then generate it.</p>
+        <p v-else-if="!reportLoading" class="empty-message">{{ tr('Choose a report and date range, then generate it.') }}</p>
         </div>
       </section>
 
       <section v-if="activeSection === 'invoices'" class="content-panel">
         <div class="panel-heading">
-          <div><p class="eyebrow">Documents and amounts</p><h2>Invoices</h2></div>
-          <button class="primary-button" @click="toggleInvoiceForm">{{ showInvoiceForm ? 'Cancel' : 'New draft' }}</button>
+          <div><p class="eyebrow">{{ tr('Documents and amounts') }}</p><h2>{{ tr('Invoices') }}</h2></div>
+          <button class="primary-button" @click="toggleInvoiceForm">{{ showInvoiceForm ? tr('Cancel') : tr('New draft') }}</button>
         </div>
-        <div class="kind-tabs" aria-label="Invoice type">
-          <button :class="{ active: invoiceKind === 'sale' }" @click="setInvoiceKind('sale')">Sales</button>
-          <button :class="{ active: invoiceKind === 'purchase' }" @click="setInvoiceKind('purchase')">Purchases</button>
+        <div class="kind-tabs" :aria-label="tr('Invoice type')">
+          <button :class="{ active: invoiceKind === 'sale' }" @click="setInvoiceKind('sale')">{{ tr('Sales') }}</button>
+          <button :class="{ active: invoiceKind === 'purchase' }" @click="setInvoiceKind('purchase')">{{ tr('Purchases') }}</button>
         </div>
         <p v-if="formError" class="error-text invoice-error" role="alert">{{ formError }}</p>
 
         <form v-if="showInvoiceForm" class="entry-form" @submit.prevent="createInvoiceDraft">
-          <h3>{{ invoiceKind === 'sale' ? 'Sales invoice' : 'Purchase bill' }} draft</h3>
-          <p class="form-note">VAT amounts use approved Kosovo VAT codes effective on the invoice date. Rule version {{ vatRuleVersion || 'not available' }}. The invoice remains a draft until linked to a matching posted journal entry.</p>
+          <h3>{{ invoiceKind === 'sale' ? tr('Sales invoice') : tr('Purchase bill') }} {{ tr('draft') }}</h3>
+          <p class="form-note">{{ tr('VAT amounts use approved Kosovo VAT codes effective on the invoice date. Rule version') }} {{ vatRuleVersion || tr('not available') }}{{ tr('. The invoice remains a draft until linked to a matching posted journal entry.') }}</p>
           <div class="fields-grid">
-            <label v-if="invoiceKind === 'sale'">Invoice number<span>Assigned automatically when you create this sales invoice (year-based sequence).</span></label>
-            <label v-else>Supplier invoice number<input v-model.trim="invoiceForm.invoice_number" required maxlength="80" /><span>Enter the number shown on the supplier’s bill.</span></label>
-            <label>{{ invoiceKind === 'sale' ? 'Customer' : 'Supplier' }}
+            <label v-if="invoiceKind === 'sale'">{{ tr('Invoice number') }}<span>{{ tr('Assigned automatically when you create this sales invoice (year-based sequence).') }}</span></label>
+            <label v-else>{{ tr('Supplier invoice number') }}<input v-model.trim="invoiceForm.invoice_number" required maxlength="80" /><span>{{ tr('Enter the number shown on the supplier’s bill.') }}</span></label>
+            <label>{{ invoiceKind === 'sale' ? tr('Customer') : tr('Supplier') }}
               <select v-model="invoiceForm.counterparty_id" required>
-                <option disabled value="">Choose a contact</option>
+                <option disabled value="">{{ tr('Choose a contact') }}</option>
                 <option v-for="party in eligibleCounterparties" :key="party.id" :value="String(party.id)">{{ party.name }}</option>
               </select>
             </label>
-            <label>Invoice date<input v-model="invoiceForm.issued_on" type="date" required @change="loadVatCodes" /></label>
-            <label>Due date<input v-model="invoiceForm.due_on" type="date" /></label>
-            <label v-if="activeUnits.length">Unit <span>(optional)</span><select v-model="invoiceForm.business_unit_id"><option value="">No unit</option><option v-for="unit in activeUnits" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
-            <label>Payment method <span>(optional)</span><select v-model="invoiceForm.payment_method"><option value="">Not set</option><option value="bank_transfer">Bank transfer</option><option value="cash">Cash</option><option value="card">Card</option><option value="other">Other</option></select></label>
-            <label v-if="invoiceKind === 'purchase'">Supplier bill file<input ref="billFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" @change="billFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /><span>PDF or photo, up to 20 MB</span></label>
-            <label v-if="invoiceKind === 'purchase'">Upload the supplier bill<input ref="billFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" @change="selectBillFile" /></label>
-            <label v-if="invoiceKind === 'purchase'">Attach an uploaded bill<select v-model="invoiceForm.document_id"><option value="">Choose later or select a file above</option><option v-for="document in availableBillDocuments" :key="document.id" :value="String(document.id)">{{ document.original_name }}</option></select></label>
+            <label>{{ tr('Invoice date') }}<input v-model="invoiceForm.issued_on" type="date" required @change="loadVatCodes" /></label>
+            <label>{{ tr('Due date') }}<input v-model="invoiceForm.due_on" type="date" /></label>
+            <label v-if="activeUnits.length">{{ tr('Unit') }} <span>{{ tr('(optional)') }}</span><select v-model="invoiceForm.business_unit_id"><option value="">{{ tr('No unit') }}</option><option v-for="unit in activeUnits" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
+            <label>{{ tr('Payment method') }} <span>{{ tr('(optional)') }}</span><select v-model="invoiceForm.payment_method"><option value="">{{ tr('Not set') }}</option><option value="bank_transfer">{{ tr('Bank transfer') }}</option><option value="cash">{{ tr('Cash') }}</option><option value="card">{{ tr('Card') }}</option><option value="other">{{ tr('Other') }}</option></select></label>
+            <label v-if="invoiceKind === 'purchase'">{{ tr('Supplier bill file') }}<input ref="billFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" @change="billFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /><span>{{ tr('PDF or photo, up to 20 MB') }}</span></label>
+            <label v-if="invoiceKind === 'purchase'">{{ tr('Upload the supplier bill') }}<input ref="billFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" @change="selectBillFile" /></label>
+            <label v-if="invoiceKind === 'purchase'">{{ tr('Attach an uploaded bill') }}<select v-model="invoiceForm.document_id"><option value="">{{ tr('Choose later or select a file above') }}</option><option v-for="document in availableBillDocuments" :key="document.id" :value="String(document.id)">{{ document.original_name }}</option></select></label>
           </div>
 
-          <div class="lines-heading"><h4>Line items</h4><button class="text-button" type="button" @click="addLine">＋ Add line</button></div>
+          <div class="lines-heading"><h4>{{ tr('Line items') }}</h4><button class="text-button" type="button" @click="addLine">{{ tr('＋ Add line') }}</button></div>
           <div v-for="(line, index) in lineDrafts" :key="index" class="line-row">
-            <label>Description<input v-model.trim="line.description" required maxlength="255" /></label>
-            <label>Qty<input v-model="line.quantity" type="number" min="0.0001" step="0.0001" required /></label>
-            <label>Unit<input v-model.trim="line.unit" maxlength="24" placeholder="Optional" /></label>
-            <label>Unit price<input v-model="line.unit_price" type="number" min="0" step="0.0001" required /></label>
-            <label>Discount ({{ business.currency }})<input v-model="line.discount_amount" type="number" min="0" step="0.01" required /></label>
-            <label>VAT treatment<select v-model="line.vat_code" required><option disabled value="">Choose approved code</option><option v-for="code in vatCodes" :key="code.code" :value="code.code">{{ code.label }} · {{ code.rate_percent }}% · {{ code.treatment.replace('_', ' ') }}</option></select></label>
-            <label>Inventory item <span>(optional)</span><select v-model="line.inventory_item_id" @change="selectInventoryItem(index)"><option value="">Not stock-tracked</option><option v-for="item in activeInventoryItems" :key="item.id" :value="String(item.id)">{{ item.sku }} · {{ item.name }}</option></select></label>
-            <label v-if="line.inventory_item_id">Warehouse<select v-model="line.warehouse_id" required><option disabled value="">Choose warehouse</option><option v-for="warehouse in activeWarehouses" :key="warehouse.id" :value="String(warehouse.id)">{{ warehouse.name }}</option></select></label>
-            <button v-if="lineDrafts.length > 1" class="remove-line" type="button" aria-label="Remove line" @click="lineDrafts.splice(index, 1)">×</button>
+            <label>{{ tr('Description') }}<input v-model.trim="line.description" required maxlength="255" /></label>
+            <label>{{ tr('Qty') }}<input v-model="line.quantity" type="number" min="0.0001" step="0.0001" required /></label>
+            <label>{{ tr('Unit') }}<input v-model.trim="line.unit" maxlength="24" :placeholder="tr('Optional')" /></label>
+            <label>{{ tr('Unit price') }}<input v-model="line.unit_price" type="number" min="0" step="0.0001" required /></label>
+            <label>{{ tr('Discount (') }}{{ business.currency }})<input v-model="line.discount_amount" type="number" min="0" step="0.01" required /></label>
+            <label>{{ tr('VAT treatment') }}<select v-model="line.vat_code" required><option disabled value="">{{ tr('Choose approved code') }}</option><option v-for="code in vatCodes" :key="code.code" :value="code.code">{{ code.label }} · {{ code.rate_percent }}% · {{ trValue(code.treatment) }}</option></select></label>
+            <label>{{ tr('Inventory item') }} <span>{{ tr('(optional)') }}</span><select v-model="line.inventory_item_id" @change="selectInventoryItem(index)"><option value="">{{ tr('Not stock-tracked') }}</option><option v-for="item in activeInventoryItems" :key="item.id" :value="String(item.id)">{{ item.sku }} · {{ item.name }}</option></select></label>
+            <label v-if="line.inventory_item_id">{{ tr('Warehouse') }}<select v-model="line.warehouse_id" required><option disabled value="">{{ tr('Choose warehouse') }}</option><option v-for="warehouse in activeWarehouses" :key="warehouse.id" :value="String(warehouse.id)">{{ warehouse.name }}</option></select></label>
+            <button v-if="lineDrafts.length > 1" class="remove-line" type="button" :aria-label="tr('Remove line')" @click="lineDrafts.splice(index, 1)">×</button>
           </div>
-          <p v-if="!lineDiscountsValid" class="error-text">A line discount cannot be greater than that line's amount before VAT.</p>
-          <div class="totals-preview"><span>Net {{ formatMoney(previewNet) }}</span><span>Tax {{ formatMoney(previewTax) }}</span><strong>Total {{ formatMoney(previewNet + previewTax) }}</strong></div>
-          <label class="notes-field">Notes <textarea v-model="invoiceForm.notes" rows="2" maxlength="5000" /></label>
-          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || eligibleCounterparties.length === 0 || !vatCodes.length || !lineDiscountsValid">{{ saving ? 'Saving…' : 'Save draft' }}</button></div>
-          <p v-if="!eligibleCounterparties.length" class="error-text">Add a {{ invoiceKind === 'sale' ? 'customer' : 'supplier' }} before creating this draft.</p>
-          <p v-if="!vatCodes.length" class="error-text">An administrator must approve VAT codes effective on this date before you can create an invoice.</p>
+          <p v-if="!lineDiscountsValid" class="error-text">{{ tr('A line discount cannot be greater than that line\'s amount before VAT.') }}</p>
+          <div class="totals-preview"><span>{{ tr('Net') }} {{ formatMoney(previewNet) }}</span><span>{{ tr('Tax') }} {{ formatMoney(previewTax) }}</span><strong>{{ tr('Total') }} {{ formatMoney(previewNet + previewTax) }}</strong></div>
+          <label class="notes-field">{{ tr('Notes') }} <textarea v-model="invoiceForm.notes" rows="2" maxlength="5000" /></label>
+          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || eligibleCounterparties.length === 0 || !vatCodes.length || !lineDiscountsValid">{{ saving ? tr('Saving…') : tr('Save draft') }}</button></div>
+          <p v-if="!eligibleCounterparties.length" class="error-text">{{ tr('Add a') }} {{ invoiceKind === 'sale' ? 'customer' : 'supplier' }} {{ tr('before creating this draft.') }}</p>
+          <p v-if="!vatCodes.length" class="error-text">{{ tr('An administrator must approve VAT codes effective on this date before you can create an invoice.') }}</p>
         </form>
 
         <div v-if="invoiceKind === 'sale'" class="invoice-list">
           <article v-for="invoice in invoices.filter((item) => item.kind === 'sale')" :key="invoice.id" class="invoice-row">
-            <div class="invoice-main"><strong>{{ invoice.invoice_number }}</strong><span>{{ invoice.counterparty.name }}</span><span v-if="invoice.document">Bill attached · {{ invoice.document.original_name }}</span></div>
+            <div class="invoice-main"><strong>{{ invoice.invoice_number }}</strong><span>{{ invoice.counterparty.name }}</span><span v-if="invoice.document">{{ tr('Bill attached ·') }} {{ invoice.document.original_name }}</span></div>
             <span class="invoice-date">{{ formatDate(invoice.issued_on) }}</span>
-            <span class="status-chip" :class="{ cancelled: invoice.status === 'cancelled' }">{{ invoice.status.replace('_', ' ') }}</span>
+            <span class="status-chip" :class="{ cancelled: invoice.status === 'cancelled' }">{{ trValue(invoice.status) }}</span>
             <strong class="invoice-total">{{ formatMoney(invoice.gross_amount) }}</strong>
-            <RouterLink class="text-button invoice-print-link" :to="{ name: 'invoice-print', params: { businessId, invoiceId: invoice.id } }" target="_blank">Print / PDF</RouterLink>
-            <p v-if="invoice.status === 'cancelled'" class="invoice-cancellation-note">Cancelled {{ formatDate(invoice.cancelled_on ?? '') }} · {{ invoice.cancellation_reason }}</p>
-            <span v-if="invoice.document_type === 'credit_note'" class="severity-chip info invoice-credit-badge">Credit note</span>
-            <p v-if="invoice.last_sent_at" class="invoice-cancellation-note">Sent by email {{ formatDate(invoice.last_sent_at.slice(0, 10)) }} · {{ invoice.last_sent_to }}</p>
+            <RouterLink class="text-button invoice-print-link" :to="{ name: 'invoice-print', params: { businessId, invoiceId: invoice.id } }" target="_blank">{{ tr('Print / PDF') }}</RouterLink>
+            <p v-if="invoice.status === 'cancelled'" class="invoice-cancellation-note">{{ tr('Cancelled') }} {{ formatDate(invoice.cancelled_on ?? '') }} · {{ invoice.cancellation_reason }}</p>
+            <span v-if="invoice.document_type === 'credit_note'" class="severity-chip info invoice-credit-badge">{{ tr('Credit note') }}</span>
+            <p v-if="invoice.last_sent_at" class="invoice-cancellation-note">{{ tr('Sent by email') }} {{ formatDate(invoice.last_sent_at.slice(0, 10)) }} · {{ invoice.last_sent_to }}</p>
             <div v-if="cancellingInvoiceId !== invoice.id && creditingInvoiceId !== invoice.id && emailingInvoiceId !== invoice.id" class="invoice-issue-actions">
-              <button v-if="invoice.kind === 'sale' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="emailingInvoiceId = invoice.id">{{ invoice.last_sent_at ? 'Send again' : 'Send by email' }}</button>
-              <button v-if="invoice.status === 'draft' && canEditBookkeeping" class="text-button" type="button" :disabled="saving" @click="deleteDraftInvoice(invoice)">Delete draft</button>
-              <button v-if="invoice.document_type !== 'credit_note' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="creditingInvoiceId = invoice.id">Credit note</button>
-              <button v-if="invoice.status === 'issued' && invoice.document_type !== 'credit_note' && Number(invoice.credited_total) === 0" class="text-button" type="button" :disabled="saving" @click="startInvoiceCancellation(invoice)">Cancel invoice</button>
+              <button v-if="invoice.kind === 'sale' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="emailingInvoiceId = invoice.id">{{ invoice.last_sent_at ? tr('Send again') : tr('Send by email') }}</button>
+              <button v-if="invoice.status === 'draft' && canEditBookkeeping" class="text-button" type="button" :disabled="saving" @click="deleteDraftInvoice(invoice)">{{ tr('Delete draft') }}</button>
+              <button v-if="invoice.document_type !== 'credit_note' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="creditingInvoiceId = invoice.id">{{ tr('Credit note') }}</button>
+              <button v-if="invoice.status === 'issued' && invoice.document_type !== 'credit_note' && Number(invoice.credited_total) === 0" class="text-button" type="button" :disabled="saving" @click="startInvoiceCancellation(invoice)">{{ tr('Cancel invoice') }}</button>
             </div>
             <CreditNoteForm v-if="creditingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" :documents="documents" @cancel="creditingInvoiceId = null" @created="onCreditNoteCreated" />
             <InvoiceEmailForm v-if="emailingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" @cancel="emailingInvoiceId = null" @sent="(sent) => { Object.assign(invoice, sent); emailingInvoiceId = null }" />
             <form v-if="cancellingInvoiceId === invoice.id" class="invoice-cancel-form" @submit.prevent="cancelInvoice(invoice)">
-              <label>Cancellation date<input v-model="cancelForm.cancelled_on" type="date" :min="invoice.issued_on" required /></label>
-              <label>Reason<input v-model.trim="cancelForm.cancellation_reason" maxlength="500" required /></label>
-              <button class="text-button" type="button" @click="cancellingInvoiceId = null">Keep invoice</button>
-              <button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Cancelling…' : 'Confirm cancellation' }}</button>
+              <label>{{ tr('Cancellation date') }}<input v-model="cancelForm.cancelled_on" type="date" :min="invoice.issued_on" required /></label>
+              <label>{{ tr('Reason') }}<input v-model.trim="cancelForm.cancellation_reason" maxlength="500" required /></label>
+              <button class="text-button" type="button" @click="cancellingInvoiceId = null">{{ tr('Keep invoice') }}</button>
+              <button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Cancelling…') : tr('Confirm cancellation') }}</button>
             </form>
-            <div v-if="invoice.status === 'draft'" class="invoice-issue-actions"><select v-model="issueSelections[invoice.id]" aria-label="Journal entry for this invoice"><option value="">Post journal automatically</option><option v-for="entry in journalEntries.filter((item) => item.status === 'posted')" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}</option></select><button class="text-button" type="button" :disabled="saving" @click="issueInvoice(invoice)">Issue</button></div>
+            <div v-if="invoice.status === 'draft'" class="invoice-issue-actions"><select v-model="issueSelections[invoice.id]" :aria-label="tr('Journal entry for this invoice')"><option value="">{{ tr('Post journal automatically') }}</option><option v-for="entry in journalEntries.filter((item) => item.status === 'posted')" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}</option></select><button class="text-button" type="button" :disabled="saving" @click="issueInvoice(invoice)">{{ tr('Issue') }}</button></div>
           </article>
-          <p v-if="!invoices.some((item) => item.kind === 'sale')" class="empty-message">No sales invoices yet.</p>
+          <p v-if="!invoices.some((item) => item.kind === 'sale')" class="empty-message">{{ tr('No sales invoices yet.') }}</p>
         </div>
         <div v-else class="invoice-list">
           <article v-for="invoice in invoices.filter((item) => item.kind === 'purchase')" :key="invoice.id" class="invoice-row">
-            <div class="invoice-main"><strong>{{ invoice.invoice_number }}</strong><span>{{ invoice.counterparty.name }}</span><span v-if="invoice.document">Bill attached · {{ invoice.document.original_name }}</span></div>
+            <div class="invoice-main"><strong>{{ invoice.invoice_number }}</strong><span>{{ invoice.counterparty.name }}</span><span v-if="invoice.document">{{ tr('Bill attached ·') }} {{ invoice.document.original_name }}</span></div>
             <span class="invoice-date">{{ formatDate(invoice.issued_on) }}</span>
-            <span class="status-chip" :class="{ cancelled: invoice.status === 'cancelled' }">{{ invoice.status.replace('_', ' ') }}</span>
+            <span class="status-chip" :class="{ cancelled: invoice.status === 'cancelled' }">{{ trValue(invoice.status) }}</span>
             <strong class="invoice-total">{{ formatMoney(invoice.gross_amount) }}</strong>
-            <RouterLink class="text-button invoice-print-link" :to="{ name: 'invoice-print', params: { businessId, invoiceId: invoice.id } }" target="_blank">Print / PDF</RouterLink>
-            <p v-if="invoice.status === 'cancelled'" class="invoice-cancellation-note">Cancelled {{ formatDate(invoice.cancelled_on ?? '') }} · {{ invoice.cancellation_reason }}</p>
-            <span v-if="invoice.document_type === 'credit_note'" class="severity-chip info invoice-credit-badge">Credit note</span>
-            <p v-if="invoice.last_sent_at" class="invoice-cancellation-note">Sent by email {{ formatDate(invoice.last_sent_at.slice(0, 10)) }} · {{ invoice.last_sent_to }}</p>
+            <RouterLink class="text-button invoice-print-link" :to="{ name: 'invoice-print', params: { businessId, invoiceId: invoice.id } }" target="_blank">{{ tr('Print / PDF') }}</RouterLink>
+            <p v-if="invoice.status === 'cancelled'" class="invoice-cancellation-note">{{ tr('Cancelled') }} {{ formatDate(invoice.cancelled_on ?? '') }} · {{ invoice.cancellation_reason }}</p>
+            <span v-if="invoice.document_type === 'credit_note'" class="severity-chip info invoice-credit-badge">{{ tr('Credit note') }}</span>
+            <p v-if="invoice.last_sent_at" class="invoice-cancellation-note">{{ tr('Sent by email') }} {{ formatDate(invoice.last_sent_at.slice(0, 10)) }} · {{ invoice.last_sent_to }}</p>
             <div v-if="cancellingInvoiceId !== invoice.id && creditingInvoiceId !== invoice.id && emailingInvoiceId !== invoice.id" class="invoice-issue-actions">
-              <button v-if="invoice.kind === 'sale' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="emailingInvoiceId = invoice.id">{{ invoice.last_sent_at ? 'Send again' : 'Send by email' }}</button>
-              <button v-if="invoice.status === 'draft' && canEditBookkeeping" class="text-button" type="button" :disabled="saving" @click="deleteDraftInvoice(invoice)">Delete draft</button>
-              <button v-if="invoice.document_type !== 'credit_note' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="creditingInvoiceId = invoice.id">Credit note</button>
-              <button v-if="invoice.status === 'issued' && invoice.document_type !== 'credit_note' && Number(invoice.credited_total) === 0" class="text-button" type="button" :disabled="saving" @click="startInvoiceCancellation(invoice)">Cancel invoice</button>
+              <button v-if="invoice.kind === 'sale' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="emailingInvoiceId = invoice.id">{{ invoice.last_sent_at ? tr('Send again') : tr('Send by email') }}</button>
+              <button v-if="invoice.status === 'draft' && canEditBookkeeping" class="text-button" type="button" :disabled="saving" @click="deleteDraftInvoice(invoice)">{{ tr('Delete draft') }}</button>
+              <button v-if="invoice.document_type !== 'credit_note' && ['issued', 'partially_paid', 'paid'].includes(invoice.status) && canEditBookkeeping" class="text-button" type="button" @click="creditingInvoiceId = invoice.id">{{ tr('Credit note') }}</button>
+              <button v-if="invoice.status === 'issued' && invoice.document_type !== 'credit_note' && Number(invoice.credited_total) === 0" class="text-button" type="button" :disabled="saving" @click="startInvoiceCancellation(invoice)">{{ tr('Cancel invoice') }}</button>
             </div>
             <CreditNoteForm v-if="creditingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" :documents="documents" @cancel="creditingInvoiceId = null" @created="onCreditNoteCreated" />
             <InvoiceEmailForm v-if="emailingInvoiceId === invoice.id" :business-id="businessId" :invoice="invoice" @cancel="emailingInvoiceId = null" @sent="(sent) => { Object.assign(invoice, sent); emailingInvoiceId = null }" />
             <form v-if="cancellingInvoiceId === invoice.id" class="invoice-cancel-form" @submit.prevent="cancelInvoice(invoice)">
-              <label>Cancellation date<input v-model="cancelForm.cancelled_on" type="date" :min="invoice.issued_on" required /></label>
-              <label>Reason<input v-model.trim="cancelForm.cancellation_reason" maxlength="500" required /></label>
-              <button class="text-button" type="button" @click="cancellingInvoiceId = null">Keep invoice</button>
-              <button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Cancelling…' : 'Confirm cancellation' }}</button>
+              <label>{{ tr('Cancellation date') }}<input v-model="cancelForm.cancelled_on" type="date" :min="invoice.issued_on" required /></label>
+              <label>{{ tr('Reason') }}<input v-model.trim="cancelForm.cancellation_reason" maxlength="500" required /></label>
+              <button class="text-button" type="button" @click="cancellingInvoiceId = null">{{ tr('Keep invoice') }}</button>
+              <button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Cancelling…') : tr('Confirm cancellation') }}</button>
             </form>
-            <div v-if="invoice.status === 'draft'" class="invoice-issue-actions"><select v-model="issueSelections[invoice.id]" aria-label="Journal entry for this invoice"><option value="">Post journal automatically</option><option v-for="entry in journalEntries.filter((item) => item.status === 'posted')" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}</option></select><button class="text-button" type="button" :disabled="saving" @click="issueInvoice(invoice)">Issue</button></div>
+            <div v-if="invoice.status === 'draft'" class="invoice-issue-actions"><select v-model="issueSelections[invoice.id]" :aria-label="tr('Journal entry for this invoice')"><option value="">{{ tr('Post journal automatically') }}</option><option v-for="entry in journalEntries.filter((item) => item.status === 'posted')" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}</option></select><button class="text-button" type="button" :disabled="saving" @click="issueInvoice(invoice)">{{ tr('Issue') }}</button></div>
           </article>
-          <p v-if="!invoices.some((item) => item.kind === 'purchase')" class="empty-message">No purchase bills yet.</p>
+          <p v-if="!invoices.some((item) => item.kind === 'purchase')" class="empty-message">{{ tr('No purchase bills yet.') }}</p>
         </div>
       </section>
 
       <section v-else-if="activeSection === 'inventory'" class="content-panel">
         <div class="panel-heading">
-          <div><p class="eyebrow">Stock and products</p><h2>Inventory</h2></div>
-          <span class="ledger-currency">{{ inventoryItems.length }} items · {{ warehouses.length }} warehouses</span>
+          <div><p class="eyebrow">{{ tr('Stock and products') }}</p><h2>{{ tr('Inventory') }}</h2></div>
+          <span class="ledger-currency">{{ inventoryItems.length }} {{ tr('items ·') }} {{ warehouses.length }} {{ tr('warehouses') }}</span>
         </div>
         <p v-if="formError" class="error-text ledger-error" role="alert">{{ formError }}</p>
-        <p class="form-note">Record an opening balance before selecting an item on an invoice. Issued purchase invoices increase stock; issued sales invoices reduce it. Manual movements require a source document and an open accounting period.</p>
+        <p class="form-note">{{ tr('Record an opening balance before selecting an item on an invoice. Issued purchase invoices increase stock; issued sales invoices reduce it. Manual movements require a source document and an open accounting period.') }}</p>
         <div class="ledger-actions">
-          <span v-if="lowStockItems.length" class="negative-balance">{{ lowStockItems.length }} item(s) below minimum</span>
+          <span v-if="lowStockItems.length" class="negative-balance">{{ lowStockItems.length }} {{ tr('item(s) below minimum') }}</span>
           <div class="inventory-actions">
-            <button class="text-button" type="button" @click="showWarehouseForm = !showWarehouseForm">{{ showWarehouseForm ? 'Cancel warehouse' : 'Add warehouse' }}</button>
-            <button class="text-button" type="button" :disabled="!activeWarehouses.length" @click="showStockMovementForm = !showStockMovementForm">{{ showStockMovementForm ? 'Cancel movement' : 'Record movement' }}</button>
-            <button class="primary-button" type="button" @click="showInventoryItemForm = !showInventoryItemForm">{{ showInventoryItemForm ? 'Cancel item' : 'Add item' }}</button>
+            <button class="text-button" type="button" @click="showWarehouseForm = !showWarehouseForm">{{ showWarehouseForm ? tr('Cancel warehouse') : tr('Add warehouse') }}</button>
+            <button class="text-button" type="button" :disabled="!activeWarehouses.length" @click="showStockMovementForm = !showStockMovementForm">{{ showStockMovementForm ? tr('Cancel movement') : tr('Record movement') }}</button>
+            <button class="primary-button" type="button" @click="showInventoryItemForm = !showInventoryItemForm">{{ showInventoryItemForm ? tr('Cancel item') : tr('Add item') }}</button>
           </div>
         </div>
         <ImportPanel v-if="canEditBookkeeping" :business-id="businessId" type="inventory-items" @imported="refreshInventoryOverview" />
         <form v-if="showInventoryItemForm" class="entry-form compact-form" @submit.prevent="createInventoryItem">
-          <h3>New inventory item</h3>
+          <h3>{{ tr('New inventory item') }}</h3>
           <div class="fields-grid">
-            <label>SKU<input v-model.trim="inventoryItemForm.sku" required maxlength="80" /></label>
-            <label>Barcode <span>(optional)</span><input v-model.trim="inventoryItemForm.barcode" maxlength="80" /></label>
-            <label>Name<input v-model.trim="inventoryItemForm.name" required maxlength="180" /></label>
-            <label>Unit<input v-model.trim="inventoryItemForm.unit" required maxlength="24" /></label>
-            <label>Purchase price<input v-model="inventoryItemForm.purchase_price" type="number" min="0" step="0.0001" required /></label>
-            <label>Sale price<input v-model="inventoryItemForm.sale_price" type="number" min="0" step="0.0001" required /></label>
-            <label>Minimum stock<input v-model="inventoryItemForm.minimum_quantity" type="number" min="0" step="0.0001" required /></label>
-            <label>Preferred supplier <span>(optional)</span><select v-model="inventoryItemForm.supplier_counterparty_id"><option value="">None</option><option v-for="party in counterparties.filter((item) => item.type === 'supplier' || item.type === 'both')" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
-            <label class="wide-field">Description <span>(optional)</span><input v-model.trim="inventoryItemForm.description" maxlength="1000" /></label>
+            <label>{{ tr('SKU') }}<input v-model.trim="inventoryItemForm.sku" required maxlength="80" /></label>
+            <label>{{ tr('Barcode') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="inventoryItemForm.barcode" maxlength="80" /></label>
+            <label>{{ tr('Name') }}<input v-model.trim="inventoryItemForm.name" required maxlength="180" /></label>
+            <label>{{ tr('Unit') }}<input v-model.trim="inventoryItemForm.unit" required maxlength="24" /></label>
+            <label>{{ tr('Purchase price') }}<input v-model="inventoryItemForm.purchase_price" type="number" min="0" step="0.0001" required /></label>
+            <label>{{ tr('Sale price') }}<input v-model="inventoryItemForm.sale_price" type="number" min="0" step="0.0001" required /></label>
+            <label>{{ tr('Minimum stock') }}<input v-model="inventoryItemForm.minimum_quantity" type="number" min="0" step="0.0001" required /></label>
+            <label>{{ tr('Preferred supplier') }} <span>{{ tr('(optional)') }}</span><select v-model="inventoryItemForm.supplier_counterparty_id"><option value="">{{ tr('None') }}</option><option v-for="party in counterparties.filter((item) => item.type === 'supplier' || item.type === 'both')" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select></label>
+            <label class="wide-field">{{ tr('Description') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="inventoryItemForm.description" maxlength="1000" /></label>
           </div>
-          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save item' }}</button></div>
+          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save item') }}</button></div>
         </form>
         <form v-if="showWarehouseForm" class="entry-form compact-form" @submit.prevent="createWarehouse">
-          <h3>New warehouse</h3>
-          <div class="fields-grid"><label>Name<input v-model.trim="warehouseForm.name" required maxlength="120" /></label><label>Address <span>(optional)</span><input v-model.trim="warehouseForm.address" maxlength="255" /></label><label class="checkbox-field"><input v-model="warehouseForm.is_default" type="checkbox" /> Make this the default warehouse</label></div>
-          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save warehouse' }}</button></div>
+          <h3>{{ tr('New warehouse') }}</h3>
+          <div class="fields-grid"><label>{{ tr('Name') }}<input v-model.trim="warehouseForm.name" required maxlength="120" /></label><label>{{ tr('Address') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="warehouseForm.address" maxlength="255" /></label><label class="checkbox-field"><input v-model="warehouseForm.is_default" type="checkbox" /> {{ tr('Make this the default warehouse') }}</label></div>
+          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save warehouse') }}</button></div>
         </form>
         <form v-if="showStockMovementForm" class="entry-form compact-form" @submit.prevent="createStockMovement">
-          <h3>Record stock movement</h3>
+          <h3>{{ tr('Record stock movement') }}</h3>
           <div class="fields-grid">
-            <label>Item<select v-model="stockMovementForm.inventory_item_id" required><option disabled value="">Choose item</option><option v-for="item in activeInventoryItems" :key="item.id" :value="String(item.id)">{{ item.sku }} · {{ item.name }}</option></select></label>
-            <label>Warehouse<select v-model="stockMovementForm.warehouse_id" required><option disabled value="">Choose warehouse</option><option v-for="warehouse in activeWarehouses" :key="warehouse.id" :value="String(warehouse.id)">{{ warehouse.name }}</option></select></label>
-            <label>Movement<select v-model="stockMovementForm.movement_type"><option value="opening">Opening balance</option><option value="adjustment">Stock adjustment</option></select></label>
-            <label>Direction<select v-model="stockMovementForm.direction"><option value="in">Increase</option><option value="out" :disabled="stockMovementForm.movement_type === 'opening'">Decrease</option></select></label>
-            <label>Quantity<input v-model="stockMovementForm.quantity" type="number" min="0.0001" step="0.0001" required /></label>
-            <label>Unit cost <span>(optional)</span><input v-model="stockMovementForm.unit_cost" type="number" min="0" step="0.0001" /></label>
-            <label>Date<input v-model="stockMovementForm.occurred_on" type="date" required /></label>
-            <label>Upload source document<input ref="stockMovementFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" @change="stockMovementFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /><span>PDF/photo, up to 20 MB.</span></label>
-            <label>Or select a document<select v-model="stockMovementForm.document_id"><option value="">Choose a document</option><option v-for="document in documents" :key="document.id" :value="String(document.id)">{{ document.original_name }}</option></select></label>
-            <label class="wide-field">Reason / notes<textarea v-model.trim="stockMovementForm.notes" rows="2" required maxlength="5000" /></label>
+            <label>{{ tr('Item') }}<select v-model="stockMovementForm.inventory_item_id" required><option disabled value="">{{ tr('Choose item') }}</option><option v-for="item in activeInventoryItems" :key="item.id" :value="String(item.id)">{{ item.sku }} · {{ item.name }}</option></select></label>
+            <label>{{ tr('Warehouse') }}<select v-model="stockMovementForm.warehouse_id" required><option disabled value="">{{ tr('Choose warehouse') }}</option><option v-for="warehouse in activeWarehouses" :key="warehouse.id" :value="String(warehouse.id)">{{ warehouse.name }}</option></select></label>
+            <label>{{ tr('Movement') }}<select v-model="stockMovementForm.movement_type"><option value="opening">{{ tr('Opening balance') }}</option><option value="adjustment">{{ tr('Stock adjustment') }}</option></select></label>
+            <label>{{ tr('Direction') }}<select v-model="stockMovementForm.direction"><option value="in">{{ tr('Increase') }}</option><option value="out" :disabled="stockMovementForm.movement_type === 'opening'">{{ tr('Decrease') }}</option></select></label>
+            <label>{{ tr('Quantity') }}<input v-model="stockMovementForm.quantity" type="number" min="0.0001" step="0.0001" required /></label>
+            <label>{{ tr('Unit cost') }} <span>{{ tr('(optional)') }}</span><input v-model="stockMovementForm.unit_cost" type="number" min="0" step="0.0001" /></label>
+            <label>{{ tr('Date') }}<input v-model="stockMovementForm.occurred_on" type="date" required /></label>
+            <label>{{ tr('Upload source document') }}<input ref="stockMovementFileInput" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" @change="stockMovementFile = ($event.target as HTMLInputElement).files?.[0] ?? null" /><span>{{ tr('PDF/photo, up to 20 MB.') }}</span></label>
+            <label>{{ tr('Or select a document') }}<select v-model="stockMovementForm.document_id"><option value="">{{ tr('Choose a document') }}</option><option v-for="document in documents" :key="document.id" :value="String(document.id)">{{ document.original_name }}</option></select></label>
+            <label class="wide-field">{{ tr('Reason / notes') }}<textarea v-model.trim="stockMovementForm.notes" rows="2" required maxlength="5000" /></label>
           </div>
-          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || !activeInventoryItems.length">{{ saving ? 'Saving…' : 'Record movement' }}</button></div>
+          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || !activeInventoryItems.length">{{ saving ? tr('Saving…') : tr('Record movement') }}</button></div>
         </form>
         <StockOperationsPanel v-if="canEditBookkeeping && warehouses.length" :business-id="businessId" :items="inventoryItems" :warehouses="warehouses" :documents="documents" @changed="refreshInventoryOverview" />
-        <h3>Items and stock on hand</h3>
+        <h3>{{ tr('Items and stock on hand') }}</h3>
         <div class="report-table-wrap">
           <table class="report-table">
-            <thead><tr><th>SKU</th><th>Item</th><th>Supplier</th><th>On hand</th><th>Minimum</th><th>Purchase price</th><th>Sale price</th><th>Status</th></tr></thead>
-            <tbody><tr v-for="item in inventoryItems" :key="item.id"><td>{{ item.sku }}</td><td>{{ item.name }}<small class="table-subtext">{{ item.barcode || item.unit }}</small></td><td>{{ item.preferred_supplier?.name || '—' }}</td><td>{{ item.on_hand_quantity }} {{ item.unit }}</td><td>{{ item.minimum_quantity }} {{ item.unit }}</td><td>{{ formatMoney(item.purchase_price) }}</td><td>{{ formatMoney(item.sale_price) }}</td><td><span class="status-chip" :class="{ 'stock-low': item.is_below_minimum }">{{ item.is_below_minimum ? 'Below minimum' : item.is_active ? 'In stock' : 'Inactive' }}</span></td></tr></tbody>
+            <thead><tr><th>{{ tr('SKU') }}</th><th>{{ tr('Item') }}</th><th>{{ tr('Supplier') }}</th><th>{{ tr('On hand') }}</th><th>{{ tr('Minimum') }}</th><th>{{ tr('Purchase price') }}</th><th>{{ tr('Sale price') }}</th><th>{{ tr('Status') }}</th></tr></thead>
+            <tbody><tr v-for="item in inventoryItems" :key="item.id"><td>{{ item.sku }}</td><td>{{ item.name }}<small class="table-subtext">{{ item.barcode || item.unit }}</small></td><td>{{ item.preferred_supplier?.name || '—' }}</td><td>{{ item.on_hand_quantity }} {{ item.unit }}</td><td>{{ item.minimum_quantity }} {{ item.unit }}</td><td>{{ formatMoney(item.purchase_price) }}</td><td>{{ formatMoney(item.sale_price) }}</td><td><span class="status-chip" :class="{ 'stock-low': item.is_below_minimum }">{{ item.is_below_minimum ? tr('Below minimum') : item.is_active ? tr('In stock') : tr('Inactive') }}</span></td></tr></tbody>
           </table>
-          <p v-if="!inventoryItems.length" class="empty-message">No inventory items yet. Add an item to start tracking stock.</p>
+          <p v-if="!inventoryItems.length" class="empty-message">{{ tr('No inventory items yet. Add an item to start tracking stock.') }}</p>
         </div>
-        <h3>Warehouses</h3>
-        <div class="contact-list"><article v-for="warehouse in warehouses" :key="warehouse.id" class="contact-row"><div><strong>{{ warehouse.name }} <span v-if="warehouse.is_default" class="status-chip">Default</span></strong><span>{{ warehouse.address || 'No address' }}</span></div><span class="status-chip">{{ warehouse.is_active ? 'Active' : 'Inactive' }}</span></article><p v-if="!warehouses.length" class="empty-message">Add a warehouse before recording stock.</p></div>
-        <h3>Recent stock movements</h3>
-        <div class="contact-list"><article v-for="movement in stockMovements" :key="movement.id" class="contact-row"><div><strong>{{ movement.inventory_item.sku }} · {{ movement.inventory_item.name }} · {{ movement.quantity_delta }} {{ movement.inventory_item.unit }}</strong><span>{{ formatDate(movement.occurred_on) }} · {{ movement.warehouse.name }} · {{ movement.invoice?.invoice_number || movement.document?.original_name || 'Source not set' }}</span><span>{{ movement.notes }}<template v-if="movement.created_by_name"> · {{ movement.created_by_name }}</template></span></div><span class="status-chip">{{ movement.movement_type.replace('_', ' ') }}</span></article><p v-if="!stockMovements.length" class="empty-message">Stock movements will appear here.</p></div>
+        <h3>{{ tr('Warehouses') }}</h3>
+        <div class="contact-list"><article v-for="warehouse in warehouses" :key="warehouse.id" class="contact-row"><div><strong>{{ warehouse.name }} <span v-if="warehouse.is_default" class="status-chip">{{ tr('Default') }}</span></strong><span>{{ warehouse.address || tr('No address') }}</span></div><span class="status-chip">{{ warehouse.is_active ? tr('Active') : tr('Inactive') }}</span></article><p v-if="!warehouses.length" class="empty-message">{{ tr('Add a warehouse before recording stock.') }}</p></div>
+        <h3>{{ tr('Recent stock movements') }}</h3>
+        <div class="contact-list"><article v-for="movement in stockMovements" :key="movement.id" class="contact-row"><div><strong>{{ movement.inventory_item.sku }} · {{ movement.inventory_item.name }} · {{ movement.quantity_delta }} {{ movement.inventory_item.unit }}</strong><span>{{ formatDate(movement.occurred_on) }} · {{ movement.warehouse.name }} · {{ movement.invoice?.invoice_number || movement.document?.original_name || tr('Source not set') }}</span><span>{{ movement.notes }}<template v-if="movement.created_by_name"> · {{ movement.created_by_name }}</template></span></div><span class="status-chip">{{ trValue(movement.movement_type) }}</span></article><p v-if="!stockMovements.length" class="empty-message">{{ tr('Stock movements will appear here.') }}</p></div>
       </section>
 
       <section v-else-if="activeSection === 'profile'" class="content-panel">
-        <div class="panel-heading"><div><p class="eyebrow">Registration and contact</p><h2>Business details</h2></div></div>
+        <div class="panel-heading"><div><p class="eyebrow">{{ tr('Registration and contact') }}</p><h2>{{ tr('Business details') }}</h2></div></div>
         <form class="entry-form" @submit.prevent="saveBusinessProfile">
           <p v-if="formError" class="error-text" role="alert">{{ formError }}</p>
           <fieldset class="plain-fieldset" :disabled="!canEditBookkeeping">
             <div class="fields-grid">
-              <label>Legal name<input v-model.trim="businessForm.legal_name" required maxlength="255" /></label>
-              <label>Trade name <span>(optional)</span><input v-model.trim="businessForm.trade_name" maxlength="255" /></label>
-              <label>NUI <span>(9 digits)</span><input v-model.trim="businessForm.nui" required inputmode="numeric" pattern="\d{9}" maxlength="9" title="9 digits, as on the business registration certificate" /></label>
-              <label>Legal form<input v-model.trim="businessForm.legal_form" maxlength="40" placeholder="B.I., SH.P.K., …" /></label>
-              <label>Owner<input v-model.trim="businessForm.owner_name" maxlength="255" /></label>
-              <label>VAT status<select v-model="businessForm.vat_status"><option value="unknown">Not set</option><option value="registered">VAT registered</option><option value="not_registered">Not VAT registered</option></select></label>
-              <label>Activity code<input v-model.trim="businessForm.activity_code" maxlength="32" /></label>
-              <label>Registered on<input v-model="businessForm.registered_at" type="date" /></label>
-              <label>Municipality<input v-model.trim="businessForm.municipality" maxlength="100" /></label>
-              <label>Address<input v-model.trim="businessForm.address" maxlength="255" /></label>
-              <label>Email<input v-model.trim="businessForm.email" type="email" maxlength="255" /></label>
-              <label>Phone<input v-model.trim="businessForm.phone" maxlength="40" /></label>
+              <label>{{ tr('Legal name') }}<input v-model.trim="businessForm.legal_name" required maxlength="255" /></label>
+              <label>{{ tr('Trade name') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="businessForm.trade_name" maxlength="255" /></label>
+              <label>{{ tr('NUI') }} <span>{{ tr('(9 digits)') }}</span><input v-model.trim="businessForm.nui" required inputmode="numeric" pattern="\d{9}" maxlength="9" :title="tr('9 digits, as on the business registration certificate')" /></label>
+              <label>{{ tr('Legal form') }}<input v-model.trim="businessForm.legal_form" maxlength="40" :placeholder="tr('B.I., SH.P.K., …')" /></label>
+              <label>{{ tr('Owner') }}<input v-model.trim="businessForm.owner_name" maxlength="255" /></label>
+              <label>{{ tr('VAT status') }}<select v-model="businessForm.vat_status"><option value="unknown">{{ tr('Not set') }}</option><option value="registered">{{ tr('VAT registered') }}</option><option value="not_registered">{{ tr('Not VAT registered') }}</option></select></label>
+              <label>{{ tr('Activity code') }}<input v-model.trim="businessForm.activity_code" maxlength="32" /></label>
+              <label>{{ tr('Registered on') }}<input v-model="businessForm.registered_at" type="date" /></label>
+              <label>{{ tr('Municipality') }}<input v-model.trim="businessForm.municipality" maxlength="100" /></label>
+              <label>{{ tr('Address') }}<input v-model.trim="businessForm.address" maxlength="255" /></label>
+              <label>{{ tr('Email') }}<input v-model.trim="businessForm.email" type="email" maxlength="255" /></label>
+              <label>{{ tr('Phone') }}<input v-model.trim="businessForm.phone" maxlength="40" /></label>
             </div>
           </fieldset>
-          <div v-if="canEditBookkeeping" class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save details' }}</button></div>
+          <div v-if="canEditBookkeeping" class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save details') }}</button></div>
         </form>
         <BusinessUnitsPanel v-model:units="units" :business-id="businessId" :can-edit="canEditBookkeeping" />
         <ApiKeysPanel v-if="business.role === 'owner'" :business-id="businessId" />
         <section v-if="canViewHistory" class="history-panel">
-          <h3>Change history</h3>
+          <h3>{{ tr('Change history') }}</h3>
           <ul class="audit-list">
-            <li v-for="entry in businessHistory" :key="entry.id"><strong>{{ entry.action.replace('business.', '').replace('_', ' ') }}</strong> · {{ formatDate(entry.created_at.slice(0, 10)) }} · {{ entry.user?.name ?? 'System' }}<span v-for="change in describeAuditChanges(entry)" :key="change">{{ change }}</span></li>
-            <li v-if="!businessHistory.length">No changes recorded yet.</li>
+            <li v-for="entry in businessHistory" :key="entry.id"><strong>{{ entry.action.replace('business.', '').replace('_', ' ') }}</strong> · {{ formatDate(entry.created_at.slice(0, 10)) }} · {{ entry.user?.name ?? tr('System') }}<span v-for="change in describeAuditChanges(entry)" :key="change">{{ change }}</span></li>
+            <li v-if="!businessHistory.length">{{ tr('No changes recorded yet.') }}</li>
           </ul>
         </section>
       </section>
@@ -2448,92 +2449,92 @@ function getApiError(error: unknown, fallback: string): string {
 
       <section v-else-if="activeSection === 'payroll'" class="content-panel">
         <div class="panel-heading no-print">
-          <div><p class="eyebrow">People and salaries</p><h2>Employees & payroll</h2></div>
-          <button v-if="canEditBookkeeping && activePayrollSection === 'employees'" class="primary-button" @click="toggleEmployeeForm">{{ showEmployeeForm ? 'Cancel' : 'Add employee' }}</button>
+          <div><p class="eyebrow">{{ tr('People and salaries') }}</p><h2>{{ tr('Employees & payroll') }}</h2></div>
+          <button v-if="canEditBookkeeping && activePayrollSection === 'employees'" class="primary-button" @click="toggleEmployeeForm">{{ showEmployeeForm ? tr('Cancel') : tr('Add employee') }}</button>
         </div>
-        <nav class="kind-tabs ledger-tabs no-print" aria-label="Payroll">
-          <button :class="{ active: activePayrollSection === 'employees' }" @click="activePayrollSection = 'employees'">Employees</button>
-          <button :class="{ active: activePayrollSection === 'runs' }" @click="activePayrollSection = 'runs'">Monthly payroll</button>
+        <nav class="kind-tabs ledger-tabs no-print" :aria-label="tr('Payroll')">
+          <button :class="{ active: activePayrollSection === 'employees' }" @click="activePayrollSection = 'employees'">{{ tr('Employees') }}</button>
+          <button :class="{ active: activePayrollSection === 'runs' }" @click="activePayrollSection = 'runs'">{{ tr('Monthly payroll') }}</button>
         </nav>
         <p v-if="formError" class="error-text" role="alert">{{ formError }}</p>
 
         <template v-if="activePayrollSection === 'employees'">
           <form v-if="showEmployeeForm" class="entry-form" @submit.prevent="saveEmployee">
-            <h3>{{ editingEmployeeId === null ? 'New employee' : 'Edit employee' }}</h3>
+            <h3>{{ editingEmployeeId === null ? tr('New employee') : tr('Edit employee') }}</h3>
             <div class="fields-grid">
-              <label>First name<input v-model.trim="employeeForm.first_name" required maxlength="100" /></label>
-              <label>Last name<input v-model.trim="employeeForm.last_name" required maxlength="100" /></label>
-              <label>Personal number<input v-model.trim="employeeForm.personal_number" maxlength="20" /></label>
-              <label>Position<input v-model.trim="employeeForm.position" maxlength="120" /></label>
-              <label>Contract<select v-model="employeeForm.contract_type"><option value="indefinite">Indefinite</option><option value="fixed_term">Fixed term</option><option value="part_time">Part time</option><option value="seasonal">Seasonal</option></select></label>
-              <label>Employment<select v-model="employeeForm.is_primary_employment"><option :value="true">Primary employer</option><option :value="false">Secondary employer</option></select></label>
-              <label>Start date<input v-model="employeeForm.employment_start" type="date" required /></label>
-              <label>End date <span>(optional)</span><input v-model="employeeForm.employment_end" type="date" :min="employeeForm.employment_start" /></label>
-              <label>Monthly gross salary<input v-model="employeeForm.gross_salary" type="number" min="0.01" step="0.01" required /></label>
-              <label>Bank<input v-model.trim="employeeForm.bank_name" maxlength="150" /></label>
-              <label>IBAN<input v-model.trim="employeeForm.iban" maxlength="34" /></label>
-              <label v-if="editingEmployeeId !== null">Status<select v-model="employeeForm.status"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+              <label>{{ tr('First name') }}<input v-model.trim="employeeForm.first_name" required maxlength="100" /></label>
+              <label>{{ tr('Last name') }}<input v-model.trim="employeeForm.last_name" required maxlength="100" /></label>
+              <label>{{ tr('Personal number') }}<input v-model.trim="employeeForm.personal_number" maxlength="20" /></label>
+              <label>{{ tr('Position') }}<input v-model.trim="employeeForm.position" maxlength="120" /></label>
+              <label>{{ tr('Contract') }}<select v-model="employeeForm.contract_type"><option value="indefinite">{{ tr('Indefinite') }}</option><option value="fixed_term">{{ tr('Fixed term') }}</option><option value="part_time">{{ tr('Part time') }}</option><option value="seasonal">{{ tr('Seasonal') }}</option></select></label>
+              <label>{{ tr('Employment') }}<select v-model="employeeForm.is_primary_employment"><option :value="true">{{ tr('Primary employer') }}</option><option :value="false">{{ tr('Secondary employer') }}</option></select></label>
+              <label>{{ tr('Start date') }}<input v-model="employeeForm.employment_start" type="date" required /></label>
+              <label>{{ tr('End date') }} <span>{{ tr('(optional)') }}</span><input v-model="employeeForm.employment_end" type="date" :min="employeeForm.employment_start" /></label>
+              <label>{{ tr('Monthly gross salary') }}<input v-model="employeeForm.gross_salary" type="number" min="0.01" step="0.01" required /></label>
+              <label>{{ tr('Bank') }}<input v-model.trim="employeeForm.bank_name" maxlength="150" /></label>
+              <label>{{ tr('IBAN') }}<input v-model.trim="employeeForm.iban" maxlength="34" /></label>
+              <label v-if="editingEmployeeId !== null">{{ tr('Status') }}<select v-model="employeeForm.status"><option value="active">{{ tr('Active') }}</option><option value="inactive">{{ tr('Inactive') }}</option></select></label>
             </div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save employee' }}</button></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save employee') }}</button></div>
           </form>
           <div class="contact-list">
             <article v-for="employee in employees" :key="employee.id" class="contact-row">
-              <div><strong>{{ employee.first_name }} {{ employee.last_name }}</strong><span>{{ [employee.position, employee.is_primary_employment ? 'Primary employer' : 'Secondary employer', `since ${formatDate(employee.employment_start)}`].filter(Boolean).join(' · ') }}</span></div>
-              <span class="status-chip">{{ formatMoney(employee.gross_salary) }}<template v-if="employee.status === 'inactive'"> · inactive</template></span>
-              <div class="contact-actions"><button v-if="canEditBookkeeping" class="text-button" type="button" @click="editEmployee(employee)">Edit</button></div>
+              <div><strong>{{ employee.first_name }} {{ employee.last_name }}</strong><span>{{ [employee.position, employee.is_primary_employment ? tr('Primary employer') : tr('Secondary employer'), `since ${formatDate(employee.employment_start)}`].filter(Boolean).join(' · ') }}</span></div>
+              <span class="status-chip">{{ formatMoney(employee.gross_salary) }}<template v-if="employee.status === 'inactive'"> {{ tr('· inactive') }}</template></span>
+              <div class="contact-actions"><button v-if="canEditBookkeeping" class="text-button" type="button" @click="editEmployee(employee)">{{ tr('Edit') }}</button></div>
             </article>
-            <p v-if="!employees.length" class="empty-message">No employees yet.</p>
+            <p v-if="!employees.length" class="empty-message">{{ tr('No employees yet.') }}</p>
           </div>
         </template>
 
         <template v-else>
           <form v-if="canEditBookkeeping" class="report-filters no-print" @submit.prevent="createPayrollRun">
-            <label>Year<input v-model.number="payrollRunForm.period_year" type="number" min="2000" max="2100" required /></label>
-            <label>Month<select v-model.number="payrollRunForm.period_month"><option v-for="month in 12" :key="month" :value="month">{{ new Intl.DateTimeFormat('en-GB', { month: 'long' }).format(new Date(2026, month - 1, 1)) }}</option></select></label>
-            <label>Pay date<input v-model="payrollRunForm.pay_date" type="date" required /></label>
-            <button class="text-button" type="button" @click="showPayrollAdditions = !showPayrollAdditions">{{ showPayrollAdditions ? 'Hide bonuses' : 'Bonuses / overtime' }}</button>
-            <button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Calculating…' : 'Calculate payroll' }}</button>
+            <label>{{ tr('Year') }}<input v-model.number="payrollRunForm.period_year" type="number" min="2000" max="2100" required /></label>
+            <label>{{ tr('Month') }}<select v-model.number="payrollRunForm.period_month"><option v-for="month in 12" :key="month" :value="month">{{ new Intl.DateTimeFormat('en-GB', { month: 'long' }).format(new Date(2026, month - 1, 1)) }}</option></select></label>
+            <label>{{ tr('Pay date') }}<input v-model="payrollRunForm.pay_date" type="date" required /></label>
+            <button class="text-button" type="button" @click="showPayrollAdditions = !showPayrollAdditions">{{ showPayrollAdditions ? tr('Hide bonuses') : tr('Bonuses / overtime') }}</button>
+            <button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Calculating…') : tr('Calculate payroll') }}</button>
           </form>
           <div v-if="canEditBookkeeping && showPayrollAdditions" class="payroll-additions no-print">
-            <p class="form-note">Taxable additions for this month only, added to gross before contributions and tax.</p>
+            <p class="form-note">{{ tr('Taxable additions for this month only, added to gross before contributions and tax.') }}</p>
             <div v-for="employee in employees.filter((item) => item.status === 'active')" :key="employee.id" class="payroll-addition-row">
               <span>{{ employee.first_name }} {{ employee.last_name }}</span>
-              <input :value="payrollAdditions[employee.id]?.amount ?? ''" type="number" min="0" step="0.01" placeholder="Amount" @input="payrollAdditions[employee.id] = { amount: ($event.target as HTMLInputElement).value, note: payrollAdditions[employee.id]?.note ?? '' }" />
-              <input :value="payrollAdditions[employee.id]?.note ?? ''" maxlength="120" placeholder="Bonus, overtime…" @input="payrollAdditions[employee.id] = { amount: payrollAdditions[employee.id]?.amount ?? '', note: ($event.target as HTMLInputElement).value }" />
+              <input :value="payrollAdditions[employee.id]?.amount ?? ''" type="number" min="0" step="0.01" :placeholder="tr('Amount')" @input="payrollAdditions[employee.id] = { amount: ($event.target as HTMLInputElement).value, note: payrollAdditions[employee.id]?.note ?? '' }" />
+              <input :value="payrollAdditions[employee.id]?.note ?? ''" maxlength="120" :placeholder="tr('Bonus, overtime…')" @input="payrollAdditions[employee.id] = { amount: payrollAdditions[employee.id]?.amount ?? '', note: ($event.target as HTMLInputElement).value }" />
             </div>
           </div>
-          <p class="form-note no-print">Contributions and income tax come from the approved payroll rules for the month. Salaries are pro-rated by calendar days for anyone who starts or leaves during the month; approving posts the payroll to the ledger on the last day of the month.</p>
+          <p class="form-note no-print">{{ tr('Contributions and income tax come from the approved payroll rules for the month. Salaries are pro-rated by calendar days for anyone who starts or leaves during the month; approving posts the payroll to the ledger on the last day of the month.') }}</p>
           <div class="contact-list no-print">
             <article v-for="run in payrollRuns" :key="run.id" class="contact-row">
-              <div><strong>{{ payrollPeriodLabel(run) }}</strong><span>Gross {{ formatMoney(run.gross_total) }} · net {{ formatMoney(run.net_total) }} · paid {{ formatDate(run.pay_date) }}</span></div>
-              <span class="status-chip" :class="{ posted: run.status === 'approved' }">{{ run.status }}</span>
-              <div class="contact-actions"><button class="text-button" type="button" @click="openPayrollRun(run)">Open</button></div>
+              <div><strong>{{ payrollPeriodLabel(run) }}</strong><span>{{ tr('Gross') }} {{ formatMoney(run.gross_total) }} {{ tr('· net') }} {{ formatMoney(run.net_total) }} {{ tr('· paid') }} {{ formatDate(run.pay_date) }}</span></div>
+              <span class="status-chip" :class="{ posted: run.status === 'approved' }">{{ trValue(run.status) }}</span>
+              <div class="contact-actions"><button class="text-button" type="button" @click="openPayrollRun(run)">{{ tr('Open') }}</button></div>
             </article>
-            <p v-if="!payrollRuns.length" class="empty-message">No payrolls calculated yet.</p>
+            <p v-if="!payrollRuns.length" class="empty-message">{{ tr('No payrolls calculated yet.') }}</p>
           </div>
           <section v-if="selectedPayrollRun" class="contact-card">
             <div class="contact-card-heading">
-              <div><p class="eyebrow">Payroll · rules {{ selectedPayrollRun.rule_version }}</p><h3>{{ payrollPeriodLabel(selectedPayrollRun) }}</h3><p class="form-note">{{ business.legal_name }} · NUI {{ business.nui }} · pay date {{ formatDate(selectedPayrollRun.pay_date) }}</p></div>
+              <div><p class="eyebrow">{{ tr('Payroll · rules') }} {{ selectedPayrollRun.rule_version }}</p><h3>{{ payrollPeriodLabel(selectedPayrollRun) }}</h3><p class="form-note">{{ business.legal_name }} {{ tr('· NUI') }} {{ business.nui }} {{ tr('· pay date') }} {{ formatDate(selectedPayrollRun.pay_date) }}</p></div>
               <div class="report-actions">
-                <button class="text-button" type="button" @click="printFinancialReport">Print / PDF</button>
-                <button class="text-button" type="button" @click="exportPayrollRun(selectedPayrollRun)">Export CSV</button>
-                <button v-if="selectedPayrollRun.status === 'approved'" class="text-button" type="button" :disabled="saving" @click="downloadPayrollWmList(selectedPayrollRun)">WM list for EDI (.xlsx)</button>
-                <button v-if="canEditBookkeeping && selectedPayrollRun.status === 'draft'" class="text-button" type="button" :disabled="saving" @click="deletePayrollRun(selectedPayrollRun)">Delete draft</button>
-                <button v-if="canEditBookkeeping && selectedPayrollRun.status === 'draft'" class="primary-button" type="button" :disabled="saving" @click="approvePayrollRun(selectedPayrollRun)">Approve and post</button>
+                <button class="text-button" type="button" @click="printFinancialReport">{{ tr('Print / PDF') }}</button>
+                <button class="text-button" type="button" @click="exportPayrollRun(selectedPayrollRun)">{{ tr('Export CSV') }}</button>
+                <button v-if="selectedPayrollRun.status === 'approved'" class="text-button" type="button" :disabled="saving" @click="downloadPayrollWmList(selectedPayrollRun)">{{ tr('WM list for EDI (.xlsx)') }}</button>
+                <button v-if="canEditBookkeeping && selectedPayrollRun.status === 'draft'" class="text-button" type="button" :disabled="saving" @click="deletePayrollRun(selectedPayrollRun)">{{ tr('Delete draft') }}</button>
+                <button v-if="canEditBookkeeping && selectedPayrollRun.status === 'draft'" class="primary-button" type="button" :disabled="saving" @click="approvePayrollRun(selectedPayrollRun)">{{ tr('Approve and post') }}</button>
               </div>
             </div>
             <div class="summary-grid">
-              <article class="summary-card"><span>Gross salaries</span><strong>{{ formatMoney(selectedPayrollRun.gross_total) }}</strong></article>
-              <article class="summary-card"><span>Pension (employee + employer)</span><strong>{{ formatMoney(Number(selectedPayrollRun.employee_contribution_total) + Number(selectedPayrollRun.employer_contribution_total)) }}</strong></article>
-              <article class="summary-card"><span>Income tax withheld</span><strong>{{ formatMoney(selectedPayrollRun.income_tax_total) }}</strong></article>
-              <article class="summary-card"><span>Net to pay</span><strong>{{ formatMoney(selectedPayrollRun.net_total) }}</strong></article>
+              <article class="summary-card"><span>{{ tr('Gross salaries') }}</span><strong>{{ formatMoney(selectedPayrollRun.gross_total) }}</strong></article>
+              <article class="summary-card"><span>{{ tr('Pension (employee + employer)') }}</span><strong>{{ formatMoney(Number(selectedPayrollRun.employee_contribution_total) + Number(selectedPayrollRun.employer_contribution_total)) }}</strong></article>
+              <article class="summary-card"><span>{{ tr('Income tax withheld') }}</span><strong>{{ formatMoney(selectedPayrollRun.income_tax_total) }}</strong></article>
+              <article class="summary-card"><span>{{ tr('Net to pay') }}</span><strong>{{ formatMoney(selectedPayrollRun.net_total) }}</strong></article>
             </div>
             <div class="report-table-wrap">
               <table class="report-table">
-                <thead><tr><th>Employee</th><th>Days</th><th>Base</th><th>Additions</th><th>Gross</th><th>Employee pension</th><th>Employer pension</th><th>Taxable</th><th>Income tax</th><th>Net</th></tr></thead>
+                <thead><tr><th>{{ tr('Employee') }}</th><th>{{ tr('Days') }}</th><th>{{ tr('Base') }}</th><th>{{ tr('Additions') }}</th><th>{{ tr('Gross') }}</th><th>{{ tr('Employee pension') }}</th><th>{{ tr('Employer pension') }}</th><th>{{ tr('Taxable') }}</th><th>{{ tr('Income tax') }}</th><th>{{ tr('Net') }}</th></tr></thead>
                 <tbody>
-                  <tr v-for="line in selectedPayrollRun.lines ?? []" :key="line.id"><td>{{ line.employee_name }}<template v-if="!line.is_primary_employment"> · secondary</template></td><td>{{ line.worked_days ?? '—' }}<template v-if="line.days_in_month">/{{ line.days_in_month }}</template></td><td>{{ formatMoney(line.base_salary) }}</td><td>{{ Number(line.additions) > 0 ? formatMoney(line.additions) : '' }}<template v-if="line.additions_note"> · {{ line.additions_note }}</template></td><td>{{ formatMoney(line.gross_salary) }}</td><td>{{ formatMoney(line.employee_contribution) }}</td><td>{{ formatMoney(line.employer_contribution) }}</td><td>{{ formatMoney(line.taxable_income) }}</td><td>{{ formatMoney(line.income_tax) }}</td><td>{{ formatMoney(line.net_salary) }}</td></tr>
-                  <tr class="statement-total"><td>Totals</td><td></td><td></td><td></td><td>{{ formatMoney(selectedPayrollRun.gross_total) }}</td><td>{{ formatMoney(selectedPayrollRun.employee_contribution_total) }}</td><td>{{ formatMoney(selectedPayrollRun.employer_contribution_total) }}</td><td></td><td>{{ formatMoney(selectedPayrollRun.income_tax_total) }}</td><td>{{ formatMoney(selectedPayrollRun.net_total) }}</td></tr>
+                  <tr v-for="line in selectedPayrollRun.lines ?? []" :key="line.id"><td>{{ line.employee_name }}<template v-if="!line.is_primary_employment"> {{ tr('· secondary') }}</template></td><td>{{ line.worked_days ?? '—' }}<template v-if="line.days_in_month">/{{ line.days_in_month }}</template></td><td>{{ formatMoney(line.base_salary) }}</td><td>{{ Number(line.additions) > 0 ? formatMoney(line.additions) : '' }}<template v-if="line.additions_note"> · {{ line.additions_note }}</template></td><td>{{ formatMoney(line.gross_salary) }}</td><td>{{ formatMoney(line.employee_contribution) }}</td><td>{{ formatMoney(line.employer_contribution) }}</td><td>{{ formatMoney(line.taxable_income) }}</td><td>{{ formatMoney(line.income_tax) }}</td><td>{{ formatMoney(line.net_salary) }}</td></tr>
+                  <tr class="statement-total"><td>{{ tr('Totals') }}</td><td></td><td></td><td></td><td>{{ formatMoney(selectedPayrollRun.gross_total) }}</td><td>{{ formatMoney(selectedPayrollRun.employee_contribution_total) }}</td><td>{{ formatMoney(selectedPayrollRun.employer_contribution_total) }}</td><td></td><td>{{ formatMoney(selectedPayrollRun.income_tax_total) }}</td><td>{{ formatMoney(selectedPayrollRun.net_total) }}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2543,66 +2544,66 @@ function getApiError(error: unknown, fallback: string): string {
 
       <section v-else-if="activeSection === 'counterparties'" class="content-panel">
         <div class="panel-heading">
-          <div><p class="eyebrow">People you work with</p><h2>Clients & suppliers</h2></div>
-          <button v-if="canEditBookkeeping" class="primary-button" @click="toggleCounterpartyForm">{{ showCounterpartyForm ? 'Cancel' : 'Add contact' }}</button>
+          <div><p class="eyebrow">{{ tr('People you work with') }}</p><h2>{{ tr('Clients & suppliers') }}</h2></div>
+          <button v-if="canEditBookkeeping" class="primary-button" @click="toggleCounterpartyForm">{{ showCounterpartyForm ? tr('Cancel') : tr('Add contact') }}</button>
         </div>
         <ImportPanel v-if="canEditBookkeeping" :business-id="businessId" type="counterparties" @imported="refreshCounterparties" />
         <form v-if="showCounterpartyForm" class="entry-form compact-form" @submit.prevent="createCounterparty">
-          <h3>{{ editingCounterpartyId === null ? 'Add a client or supplier' : 'Edit contact' }}</h3>
+          <h3>{{ editingCounterpartyId === null ? tr('Add a client or supplier') : tr('Edit contact') }}</h3>
           <p v-if="formError" class="error-text" role="alert">{{ formError }}</p>
           <div class="fields-grid">
-            <label>Type<select v-model="counterpartyForm.type"><option value="customer">Customer</option><option value="supplier">Supplier</option><option value="both">Both</option></select></label>
-            <label>Name<input v-model.trim="counterpartyForm.name" required maxlength="255" /></label>
-            <label>NUI / fiscal or personal number <span>(optional)</span><input v-model.trim="counterpartyForm.nui" maxlength="32" title="Kosovo business: 9 digits. Individual: 10-digit personal number." /></label>
-            <label>Email<input v-model.trim="counterpartyForm.email" type="email" maxlength="255" /></label>
-            <label>Phone<input v-model.trim="counterpartyForm.phone" maxlength="40" /></label>
-            <label>Address<input v-model.trim="counterpartyForm.address" maxlength="255" /></label>
-            <label>Municipality<input v-model.trim="counterpartyForm.municipality" maxlength="100" /></label>
-            <label v-if="editingCounterpartyId !== null">Status<select v-model="counterpartyForm.status"><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+            <label>{{ tr('Type') }}<select v-model="counterpartyForm.type"><option value="customer">{{ tr('Customer') }}</option><option value="supplier">{{ tr('Supplier') }}</option><option value="both">{{ tr('Both') }}</option></select></label>
+            <label>{{ tr('Name') }}<input v-model.trim="counterpartyForm.name" required maxlength="255" /></label>
+            <label>{{ tr('NUI / fiscal or personal number') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="counterpartyForm.nui" maxlength="32" :title="tr('Kosovo business: 9 digits. Individual: 10-digit personal number.')" /></label>
+            <label>{{ tr('Email') }}<input v-model.trim="counterpartyForm.email" type="email" maxlength="255" /></label>
+            <label>{{ tr('Phone') }}<input v-model.trim="counterpartyForm.phone" maxlength="40" /></label>
+            <label>{{ tr('Address') }}<input v-model.trim="counterpartyForm.address" maxlength="255" /></label>
+            <label>{{ tr('Municipality') }}<input v-model.trim="counterpartyForm.municipality" maxlength="100" /></label>
+            <label v-if="editingCounterpartyId !== null">{{ tr('Status') }}<select v-model="counterpartyForm.status"><option value="active">{{ tr('Active') }}</option><option value="inactive">{{ tr('Inactive') }}</option></select></label>
           </div>
-          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save contact' }}</button></div>
+          <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save contact') }}</button></div>
         </form>
         <section v-if="counterpartyStatement" class="contact-card" aria-live="polite">
           <div class="contact-card-heading">
             <div>
-              <p class="eyebrow">Contact card</p>
+              <p class="eyebrow">{{ tr('Contact card') }}</p>
               <h3>{{ counterpartyStatement.counterparty.name }}</h3>
-              <p class="form-note">{{ [counterpartyStatement.counterparty.nui ? `NUI ${counterpartyStatement.counterparty.nui}` : 'No NUI', counterpartyStatement.counterparty.email, counterpartyStatement.counterparty.phone, counterpartyStatement.counterparty.municipality].filter(Boolean).join(' · ') }}</p>
+              <p class="form-note">{{ [counterpartyStatement.counterparty.nui ? `NUI ${counterpartyStatement.counterparty.nui}` : tr('No NUI'), counterpartyStatement.counterparty.email, counterpartyStatement.counterparty.phone, counterpartyStatement.counterparty.municipality].filter(Boolean).join(' · ') }}</p>
             </div>
             <div class="report-actions">
-              <button class="text-button" type="button" @click="printFinancialReport">Print / PDF</button>
-              <button class="text-button" type="button" @click="exportCounterpartyStatement">Export CSV</button>
-              <button class="text-button" type="button" @click="counterpartyStatement = null">Close</button>
+              <button class="text-button" type="button" @click="printFinancialReport">{{ tr('Print / PDF') }}</button>
+              <button class="text-button" type="button" @click="exportCounterpartyStatement">{{ tr('Export CSV') }}</button>
+              <button class="text-button" type="button" @click="counterpartyStatement = null">{{ tr('Close') }}</button>
             </div>
           </div>
           <form class="report-filters" @submit.prevent="openCounterpartyCard(counterpartyStatement.counterparty)">
-            <label>From<input v-model="statementFrom" type="date" required /></label>
-            <label>To<input v-model="statementTo" type="date" required /></label>
-            <button class="primary-button" type="submit" :disabled="statementLoading">{{ statementLoading ? 'Loading…' : 'Update statement' }}</button>
+            <label>{{ tr('From') }}<input v-model="statementFrom" type="date" required /></label>
+            <label>{{ tr('To') }}<input v-model="statementTo" type="date" required /></label>
+            <button class="primary-button" type="submit" :disabled="statementLoading">{{ statementLoading ? tr('Loading…') : tr('Update statement') }}</button>
           </form>
-          <div class="print-only report-print-heading"><strong>Statement · {{ counterpartyStatement.counterparty.name }}</strong><span>{{ business.legal_name }} · NUI {{ business.nui }}</span><span>{{ formatDate(counterpartyStatement.from) }} – {{ formatDate(counterpartyStatement.to) }} · {{ counterpartyStatement.currency }}</span></div>
+          <div class="print-only report-print-heading"><strong>{{ tr('Statement ·') }} {{ counterpartyStatement.counterparty.name }}</strong><span>{{ business.legal_name }} {{ tr('· NUI') }} {{ business.nui }}</span><span>{{ formatDate(counterpartyStatement.from) }} – {{ formatDate(counterpartyStatement.to) }} · {{ counterpartyStatement.currency }}</span></div>
           <section v-for="section in counterpartyStatement.sections" :key="section.kind" class="statement-section">
             <h4>{{ statementSideLabel(section) }}</h4>
             <div class="summary-grid">
-              <article class="summary-card"><span>Balance now</span><strong>{{ formatMoney(section.outstanding_amount) }}</strong><small>{{ section.open_invoices.length }} open invoice(s)</small></article>
-              <article class="summary-card"><span>Overdue</span><strong>{{ formatMoney(section.overdue_amount) }}</strong><small>{{ section.oldest_days_overdue ? `Oldest ${section.oldest_days_overdue} days late` : 'Nothing late' }}</small></article>
-              <article class="summary-card"><span>Opening · closing</span><strong>{{ formatMoney(section.closing_balance) }}</strong><small>From {{ formatMoney(section.opening_balance) }}</small></article>
+              <article class="summary-card"><span>{{ tr('Balance now') }}</span><strong>{{ formatMoney(section.outstanding_amount) }}</strong><small>{{ section.open_invoices.length }} {{ tr('open invoice(s)') }}</small></article>
+              <article class="summary-card"><span>{{ tr('Overdue') }}</span><strong>{{ formatMoney(section.overdue_amount) }}</strong><small>{{ section.oldest_days_overdue ? trf('Oldest {0} days late', [section.oldest_days_overdue]) : tr('Nothing late') }}</small></article>
+              <article class="summary-card"><span>{{ tr('Opening · closing') }}</span><strong>{{ formatMoney(section.closing_balance) }}</strong><small>{{ tr('From') }} {{ formatMoney(section.opening_balance) }}</small></article>
             </div>
             <div class="report-table-wrap">
               <table class="report-table">
-                <thead><tr><th>Date</th><th>Entry</th><th>Increase</th><th>Decrease</th><th>Balance</th></tr></thead>
+                <thead><tr><th>{{ tr('Date') }}</th><th>{{ tr('Entry') }}</th><th>{{ tr('Increase') }}</th><th>{{ tr('Decrease') }}</th><th>{{ tr('Balance') }}</th></tr></thead>
                 <tbody>
-                  <tr><td>{{ formatDate(counterpartyStatement.from) }}</td><td>Opening balance</td><td></td><td></td><td>{{ formatMoney(section.opening_balance) }}</td></tr>
+                  <tr><td>{{ formatDate(counterpartyStatement.from) }}</td><td>{{ tr('Opening balance') }}</td><td></td><td></td><td>{{ formatMoney(section.opening_balance) }}</td></tr>
                   <tr v-for="(line, index) in section.lines" :key="`${line.type}-${line.invoice_id}-${line.payment_id}-${index}`"><td>{{ formatDate(line.date) }}</td><td>{{ statementLineLabel(line) }}</td><td>{{ line.increase !== '0.00' ? formatMoney(line.increase) : '' }}</td><td>{{ line.decrease !== '0.00' ? formatMoney(line.decrease) : '' }}</td><td>{{ formatMoney(line.balance) }}</td></tr>
-                  <tr class="statement-total"><td>{{ formatDate(counterpartyStatement.to) }}</td><td>Closing balance</td><td></td><td></td><td>{{ formatMoney(section.closing_balance) }}</td></tr>
+                  <tr class="statement-total"><td>{{ formatDate(counterpartyStatement.to) }}</td><td>{{ tr('Closing balance') }}</td><td></td><td></td><td>{{ formatMoney(section.closing_balance) }}</td></tr>
                 </tbody>
               </table>
             </div>
             <template v-if="section.open_invoices.length">
-              <h5>Open invoices</h5>
+              <h5>{{ tr('Open invoices') }}</h5>
               <div class="report-table-wrap">
                 <table class="report-table">
-                  <thead><tr><th>Invoice</th><th>Date</th><th>Due</th><th>Total</th><th>Outstanding</th><th>Late</th></tr></thead>
+                  <thead><tr><th>{{ tr('Invoice') }}</th><th>{{ tr('Date') }}</th><th>{{ tr('Due') }}</th><th>{{ tr('Total') }}</th><th>{{ tr('Outstanding') }}</th><th>{{ tr('Late') }}</th></tr></thead>
                   <tbody><tr v-for="invoice in section.open_invoices" :key="invoice.id"><td>{{ invoice.invoice_number }}</td><td>{{ formatDate(invoice.issued_on) }}</td><td>{{ formatDate(invoice.due_on) }}</td><td>{{ formatMoney(invoice.gross_amount) }}</td><td>{{ formatMoney(invoice.outstanding_amount) }}</td><td>{{ invoice.days_overdue ? `${invoice.days_overdue} days` : '—' }}</td></tr></tbody>
                 </table>
               </div>
@@ -2611,111 +2612,111 @@ function getApiError(error: unknown, fallback: string): string {
         </section>
         <div class="contact-list no-print">
           <article v-for="party in counterparties" :key="party.id" class="contact-row">
-            <div><strong>{{ party.name }}</strong><span>{{ party.nui || party.email || party.municipality || 'No extra details' }}</span></div>
-            <span class="status-chip">{{ party.type }}<template v-if="party.status === 'inactive'"> · inactive</template></span>
+            <div><strong>{{ party.name }}</strong><span>{{ party.nui || party.email || party.municipality || tr('No extra details') }}</span></div>
+            <span class="status-chip">{{ trValue(party.type) }}<template v-if="party.status === 'inactive'"> {{ tr('· inactive') }}</template></span>
             <div class="contact-actions">
-              <button class="text-button" type="button" :disabled="statementLoading" @click="openCounterpartyCard(party)">Card</button>
-              <button v-if="canEditBookkeeping" class="text-button" type="button" @click="editCounterparty(party)">Edit</button>
-              <button v-if="canViewHistory" class="text-button" type="button" @click="toggleCounterpartyHistory(party)">{{ historyCounterpartyId === party.id ? 'Hide history' : 'History' }}</button>
+              <button class="text-button" type="button" :disabled="statementLoading" @click="openCounterpartyCard(party)">{{ tr('Card') }}</button>
+              <button v-if="canEditBookkeeping" class="text-button" type="button" @click="editCounterparty(party)">{{ tr('Edit') }}</button>
+              <button v-if="canViewHistory" class="text-button" type="button" @click="toggleCounterpartyHistory(party)">{{ historyCounterpartyId === party.id ? tr('Hide history') : tr('History') }}</button>
             </div>
             <ul v-if="historyCounterpartyId === party.id" class="audit-list">
-              <li v-for="entry in counterpartyHistory" :key="entry.id"><strong>{{ entry.action.replace('counterparty.', '').replace('_', ' ') }}</strong> · {{ formatDate(entry.created_at.slice(0, 10)) }} · {{ entry.user?.name ?? 'System' }}<span v-for="change in describeAuditChanges(entry)" :key="change">{{ change }}</span></li>
-              <li v-if="!counterpartyHistory.length">No changes recorded yet.</li>
+              <li v-for="entry in counterpartyHistory" :key="entry.id"><strong>{{ entry.action.replace('counterparty.', '').replace('_', ' ') }}</strong> · {{ formatDate(entry.created_at.slice(0, 10)) }} · {{ entry.user?.name ?? tr('System') }}<span v-for="change in describeAuditChanges(entry)" :key="change">{{ change }}</span></li>
+              <li v-if="!counterpartyHistory.length">{{ tr('No changes recorded yet.') }}</li>
             </ul>
           </article>
-          <p v-if="!counterparties.length" class="empty-message">No contacts yet. Add customers and suppliers here.</p>
+          <p v-if="!counterparties.length" class="empty-message">{{ tr('No contacts yet. Add customers and suppliers here.') }}</p>
         </div>
       </section>
 
       <section v-else-if="activeSection === 'money'" class="content-panel">
         <div class="panel-heading">
-          <div><p class="eyebrow">Receipts and payments</p><h2>Cash & bank</h2></div>
+          <div><p class="eyebrow">{{ tr('Receipts and payments') }}</p><h2>{{ tr('Cash & bank') }}</h2></div>
           <span class="ledger-currency">{{ business.currency }}</span>
         </div>
-        <nav class="kind-tabs ledger-tabs" aria-label="Cash and bank">
-          <button :class="{ active: activeMoneySection === 'cash' }" @click="activeMoneySection = 'cash'">Cash accounts</button>
-          <button :class="{ active: activeMoneySection === 'bank' }" @click="activeMoneySection = 'bank'">Bank accounts</button>
-          <button :class="{ active: activeMoneySection === 'payments' }" @click="activeMoneySection = 'payments'">Payments</button>
+        <nav class="kind-tabs ledger-tabs" :aria-label="tr('Cash and bank')">
+          <button :class="{ active: activeMoneySection === 'cash' }" @click="activeMoneySection = 'cash'">{{ tr('Cash accounts') }}</button>
+          <button :class="{ active: activeMoneySection === 'bank' }" @click="activeMoneySection = 'bank'">{{ tr('Bank accounts') }}</button>
+          <button :class="{ active: activeMoneySection === 'payments' }" @click="activeMoneySection = 'payments'">{{ tr('Payments') }}</button>
         </nav>
         <p v-if="formError" class="error-text ledger-error" role="alert">{{ formError }}</p>
 
         <template v-if="activeMoneySection === 'cash'">
-          <div class="ledger-actions"><p class="form-note">Link each cash box to an active asset account in the chart of accounts.</p><button class="primary-button" :disabled="!activeAssetAccounts.length" @click="showCashAccountForm = !showCashAccountForm">{{ showCashAccountForm ? 'Cancel' : 'Add cash account' }}</button></div>
-          <p v-if="!activeAssetAccounts.length" class="setup-hint">Add an active asset account in Ledger → Accounts first.</p>
+          <div class="ledger-actions"><p class="form-note">{{ tr('Link each cash box to an active asset account in the chart of accounts.') }}</p><button class="primary-button" :disabled="!activeAssetAccounts.length" @click="showCashAccountForm = !showCashAccountForm">{{ showCashAccountForm ? tr('Cancel') : tr('Add cash account') }}</button></div>
+          <p v-if="!activeAssetAccounts.length" class="setup-hint">{{ tr('Add an active asset account in Ledger → Accounts first.') }}</p>
           <form v-if="showCashAccountForm" class="entry-form" @submit.prevent="createCashAccount">
-            <h3>New cash account</h3>
-            <div class="fields-grid"><label>Name<input v-model.trim="cashAccountForm.name" required maxlength="100" /></label><label>Ledger account<select v-model="cashAccountForm.account_id" required><option disabled value="">Choose asset account</option><option v-for="account in activeAssetAccounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label></div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save cash account' }}</button></div>
+            <h3>{{ tr('New cash account') }}</h3>
+            <div class="fields-grid"><label>{{ tr('Name') }}<input v-model.trim="cashAccountForm.name" required maxlength="100" /></label><label>{{ tr('Ledger account') }}<select v-model="cashAccountForm.account_id" required><option disabled value="">{{ tr('Choose asset account') }}</option><option v-for="account in activeAssetAccounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save cash account') }}</button></div>
           </form>
-          <div class="account-list"><article v-for="account in cashAccounts" :key="account.id" class="money-account-row"><div><strong>{{ account.name }}</strong><span>{{ account.account ? account.account.code + ' · ' + account.account.name : 'Ledger account needs to be assigned' }}</span><span v-if="account.negative_balance" class="negative-balance">Cash balance is below zero</span></div><strong class="invoice-total">{{ formatMoney(account.balance) }}</strong></article><p v-if="!cashAccounts.length" class="empty-message">No cash accounts yet.</p></div>
+          <div class="account-list"><article v-for="account in cashAccounts" :key="account.id" class="money-account-row"><div><strong>{{ account.name }}</strong><span>{{ account.account ? account.account.code + ' · ' + account.account.name : tr('Ledger account needs to be assigned') }}</span><span v-if="account.negative_balance" class="negative-balance">{{ tr('Cash balance is below zero') }}</span></div><strong class="invoice-total">{{ formatMoney(account.balance) }}</strong></article><p v-if="!cashAccounts.length" class="empty-message">{{ tr('No cash accounts yet.') }}</p></div>
         </template>
 
         <template v-else-if="activeMoneySection === 'bank'">
-          <div class="ledger-actions"><p class="form-note">Link each business bank account to its active ledger asset account.</p><button class="primary-button" :disabled="!activeAssetAccounts.length" @click="showBankAccountForm = !showBankAccountForm">{{ showBankAccountForm ? 'Cancel' : 'Add bank account' }}</button></div>
-          <p v-if="!activeAssetAccounts.length" class="setup-hint">Add an active asset account in Ledger → Accounts first.</p>
+          <div class="ledger-actions"><p class="form-note">{{ tr('Link each business bank account to its active ledger asset account.') }}</p><button class="primary-button" :disabled="!activeAssetAccounts.length" @click="showBankAccountForm = !showBankAccountForm">{{ showBankAccountForm ? tr('Cancel') : tr('Add bank account') }}</button></div>
+          <p v-if="!activeAssetAccounts.length" class="setup-hint">{{ tr('Add an active asset account in Ledger → Accounts first.') }}</p>
           <form v-if="showBankAccountForm" class="entry-form" @submit.prevent="createBankAccount">
-            <h3>New bank account</h3>
-            <div class="fields-grid"><label>Bank name<input v-model.trim="bankAccountForm.bank_name" required maxlength="150" /></label><label>Account name <span>(optional)</span><input v-model.trim="bankAccountForm.account_name" maxlength="150" /></label><label>IBAN <span>(optional)</span><input v-model.trim="bankAccountForm.iban" maxlength="34" /></label><label>Ledger account<select v-model="bankAccountForm.account_id" required><option disabled value="">Choose asset account</option><option v-for="account in activeAssetAccounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label></div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save bank account' }}</button></div>
+            <h3>{{ tr('New bank account') }}</h3>
+            <div class="fields-grid"><label>{{ tr('Bank name') }}<input v-model.trim="bankAccountForm.bank_name" required maxlength="150" /></label><label>{{ tr('Account name') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="bankAccountForm.account_name" maxlength="150" /></label><label>{{ tr('IBAN') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="bankAccountForm.iban" maxlength="34" /></label><label>{{ tr('Ledger account') }}<select v-model="bankAccountForm.account_id" required><option disabled value="">{{ tr('Choose asset account') }}</option><option v-for="account in activeAssetAccounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save bank account') }}</button></div>
           </form>
-          <div class="account-list"><article v-for="account in bankAccounts" :key="account.id" class="money-account-row"><div><strong>{{ account.bank_name }}<template v-if="account.account_name"> · {{ account.account_name }}</template></strong><span>{{ account.iban || 'IBAN not added' }} · {{ account.account ? account.account.code + ' · ' + account.account.name : 'Ledger account needs to be assigned' }}</span><span>{{ account.currency }} ledger balance · {{ account.unreconciled_transactions_count }} unreconciled</span><button class="text-button bank-review-button" type="button" @click="loadBankTransactions(account)">{{ selectedBankAccountId === String(account.id) ? 'Refresh transactions' : 'Review transactions' }}</button></div><strong class="invoice-total">{{ formatMoney(account.balance) }}</strong></article><p v-if="!bankAccounts.length" class="empty-message">No bank accounts yet.</p></div>
+          <div class="account-list"><article v-for="account in bankAccounts" :key="account.id" class="money-account-row"><div><strong>{{ account.bank_name }}<template v-if="account.account_name"> · {{ account.account_name }}</template></strong><span>{{ account.iban || tr('IBAN not added') }} · {{ account.account ? account.account.code + ' · ' + account.account.name : tr('Ledger account needs to be assigned') }}</span><span>{{ account.currency }} {{ tr('ledger balance ·') }} {{ account.unreconciled_transactions_count }} {{ tr('unreconciled') }}</span><button class="text-button bank-review-button" type="button" @click="loadBankTransactions(account)">{{ selectedBankAccountId === String(account.id) ? tr('Refresh transactions') : tr('Review transactions') }}</button></div><strong class="invoice-total">{{ formatMoney(account.balance) }}</strong></article><p v-if="!bankAccounts.length" class="empty-message">{{ tr('No bank accounts yet.') }}</p></div>
           <section v-if="selectedBankAccount" class="bank-reconciliation">
-            <div class="bank-reconciliation-heading"><div><h3>{{ selectedBankAccount.bank_name }} transactions</h3><p>Import the statement your bank exports (Excel or CSV). Lines already in the books are matched automatically; for the rest, match a posted entry or choose what the line is for and book it.</p></div><span class="status-chip">{{ selectedBankAccount.unreconciled_transactions_count }} to review</span></div>
+            <div class="bank-reconciliation-heading"><div><h3>{{ selectedBankAccount.bank_name }} {{ tr('transactions') }}</h3><p>{{ tr('Import the statement your bank exports (Excel or CSV). Lines already in the books are matched automatically; for the rest, match a posted entry or choose what the line is for and book it.') }}</p></div><span class="status-chip">{{ selectedBankAccount.unreconciled_transactions_count }} {{ tr('to review') }}</span></div>
             <form class="bank-import-form" @submit.prevent="importBankStatement">
-              <label>Bank statement (.xlsx or .csv)<input type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" required @change="selectBankStatement" /></label>
-              <p class="form-note">Needs a date and a description column (<code>Data</code>, <code>Përshkrimi</code>), plus either one amount column (<code>Shuma</code>: positive for money received, negative for money paid) or separate <code>Debi</code> and <code>Kredi</code> columns. Optional <code>external_id</code> prevents importing a row twice. Bank details above the header and the totals row are skipped. Old .xls files must be saved as .xlsx first.</p>
-              <button class="primary-button" type="submit" :disabled="importingBankStatement || !bankStatementFile">{{ importingBankStatement ? 'Importing…' : 'Import statement' }}</button>
+              <label>{{ tr('Bank statement (.xlsx or .csv)') }}<input type="file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain" required @change="selectBankStatement" /></label>
+              <p class="form-note">{{ tr('Needs a date and a description column (') }}<code>Data</code>, <code>Përshkrimi</code>{{ tr('), plus either one amount column (') }}<code>Shuma</code>{{ tr(': positive for money received, negative for money paid) or separate') }} <code>Debi</code> {{ tr('and') }} <code>Kredi</code> {{ tr('columns. Optional') }} <code>external_id</code> {{ tr('prevents importing a row twice. Bank details above the header and the totals row are skipped. Old .xls files must be saved as .xlsx first.') }}</p>
+              <button class="primary-button" type="submit" :disabled="importingBankStatement || !bankStatementFile">{{ importingBankStatement ? tr('Importing…') : tr('Import statement') }}</button>
             </form>
             <p v-if="bankImportNotice" class="form-note" role="status">{{ bankImportNotice }}</p>
             <div class="bank-transaction-list">
               <article v-for="transaction in bankTransactions" :key="transaction.id" class="bank-transaction-row">
-                <div class="bank-transaction-summary"><div><strong>{{ transaction.description }}</strong><span>{{ formatDate(transaction.transaction_date) }}<template v-if="transaction.external_id"> · Ref {{ transaction.external_id }}</template><template v-if="transaction.document"> · {{ transaction.document.original_name }}</template></span><span v-if="transaction.journal_entry">Journal #{{ transaction.journal_entry.id }} · {{ transaction.journal_entry.description }}</span><span v-if="transaction.is_reconciled && transaction.category_label">{{ transaction.category_label }}<template v-if="transaction.counterparty"> · {{ transaction.counterparty.name }}</template><template v-else-if="transaction.account"> · {{ transaction.account.code }} {{ transaction.account.name }}</template></span><span v-if="transaction.source === 'payment'">Recorded as a payment in the books, not from a statement</span></div><strong :class="transaction.amount.startsWith('-') ? 'negative-balance' : 'invoice-total'">{{ formatMoney(transaction.amount) }}</strong></div>
+                <div class="bank-transaction-summary"><div><strong>{{ transaction.description }}</strong><span>{{ formatDate(transaction.transaction_date) }}<template v-if="transaction.external_id"> {{ tr('· Ref') }} {{ transaction.external_id }}</template><template v-if="transaction.document"> · {{ transaction.document.original_name }}</template></span><span v-if="transaction.journal_entry">{{ tr('Journal #') }}{{ transaction.journal_entry.id }} · {{ transaction.journal_entry.description }}</span><span v-if="transaction.is_reconciled && transaction.category_label">{{ transaction.category_label }}<template v-if="transaction.counterparty"> · {{ transaction.counterparty.name }}</template><template v-else-if="transaction.account"> · {{ transaction.account.code }} {{ transaction.account.name }}</template></span><span v-if="transaction.source === 'payment'">{{ tr('Recorded as a payment in the books, not from a statement') }}</span></div><strong :class="transaction.amount.startsWith('-') ? 'negative-balance' : 'invoice-total'">{{ formatMoney(transaction.amount) }}</strong></div>
                 <div v-if="!transaction.is_reconciled" class="bank-match-actions">
-                  <label>Matching posted entry<select v-model="reconciliationSelections[transaction.id]"><option value="">Choose entry</option><option v-for="entry in bankTransactionCandidates(transaction)" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}{{ entry.reference ? ` · ${entry.reference}` : '' }}</option></select></label>
-                  <button class="primary-button" type="button" :disabled="reconcilingTransactionId === transaction.id || (!reconciliationSelections[transaction.id] && !transaction.journal_entry)" @click="reconcileBankTransaction(transaction)">{{ reconcilingTransactionId === transaction.id ? 'Saving…' : 'Reconcile' }}</button>
-                  <span v-if="!bankTransactionCandidates(transaction).length && !transaction.journal_entry" class="form-note">No exact posted match for this date and amount.</span>
+                  <label>{{ tr('Matching posted entry') }}<select v-model="reconciliationSelections[transaction.id]"><option value="">{{ tr('Choose entry') }}</option><option v-for="entry in bankTransactionCandidates(transaction)" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}{{ entry.reference ? ` · ${entry.reference}` : '' }}</option></select></label>
+                  <button class="primary-button" type="button" :disabled="reconcilingTransactionId === transaction.id || (!reconciliationSelections[transaction.id] && !transaction.journal_entry)" @click="reconcileBankTransaction(transaction)">{{ reconcilingTransactionId === transaction.id ? tr('Saving…') : tr('Reconcile') }}</button>
+                  <span v-if="!bankTransactionCandidates(transaction).length && !transaction.journal_entry" class="form-note">{{ tr('No exact posted match for this date and amount.') }}</span>
                 </div>
                 <BankLineCategorizer v-if="!transaction.is_reconciled && transaction.source === 'import'" :business-id="businessId" :bank-account-id="selectedBankAccount.id" :bank-ledger-account-id="selectedBankAccount.account?.id ?? null" :line="transaction" :categories="bankCategories" :accounts="accounts" :counterparties="counterparties" @changed="updateBankLine" @booked="bankLineBooked" />
-                <div v-else class="bank-reconciled-status"><span class="status-chip">Reconciled</span><span>{{ transaction.reconciled_at ? formatDate(transaction.reconciled_at.slice(0, 10)) : '' }}</span></div>
+                <div v-else class="bank-reconciled-status"><span class="status-chip">{{ tr('Reconciled') }}</span><span>{{ transaction.reconciled_at ? formatDate(transaction.reconciled_at.slice(0, 10)) : '' }}</span></div>
               </article>
-              <p v-if="!bankTransactions.length" class="empty-message">No transactions loaded for this account yet.</p>
+              <p v-if="!bankTransactions.length" class="empty-message">{{ tr('No transactions loaded for this account yet.') }}</p>
             </div>
             <BankReconciliationPanel :business-id="businessId" :bank-account-id="selectedBankAccount.id" :bank-name="selectedBankAccount.bank_name" :currency="business?.currency ?? 'EUR'" @rules-applied="refreshBankAccount" />
           </section>
         </template>
 
         <template v-else>
-          <div class="ledger-actions"><p class="form-note">Each payment needs a source document. Payments applied in full to invoices are posted to the ledger automatically.</p><button class="primary-button" :disabled="!cashAccounts.length && !bankAccounts.length" @click="showPaymentForm = !showPaymentForm">{{ showPaymentForm ? 'Cancel' : 'Record payment' }}</button></div>
+          <div class="ledger-actions"><p class="form-note">{{ tr('Each payment needs a source document. Payments applied in full to invoices are posted to the ledger automatically.') }}</p><button class="primary-button" :disabled="!cashAccounts.length && !bankAccounts.length" @click="showPaymentForm = !showPaymentForm">{{ showPaymentForm ? tr('Cancel') : tr('Record payment') }}</button></div>
           <form v-if="showPaymentForm" class="entry-form" @submit.prevent="createPayment">
-            <h3>Record a cash or bank movement</h3>
+            <h3>{{ tr('Record a cash or bank movement') }}</h3>
             <div class="fields-grid">
-              <label>Account type<select v-model="paymentForm.source"><option value="cash">Cash</option><option value="bank">Bank</option></select></label>
-              <label v-if="paymentForm.source === 'cash'">Cash account<select v-model="paymentForm.cash_account_id" required><option disabled value="">Choose cash account</option><option v-for="account in cashAccounts.filter((item) => item.account)" :key="account.id" :value="String(account.id)">{{ account.name }} · {{ account.account?.code }}</option></select></label>
-              <label v-else>Bank account<select v-model="paymentForm.bank_account_id" required><option disabled value="">Choose bank account</option><option v-for="account in bankAccounts.filter((item) => item.account)" :key="account.id" :value="String(account.id)">{{ account.bank_name }} · {{ account.account?.code }}</option></select></label>
-              <label>Direction<select v-model="paymentForm.direction"><option value="in">Money received</option><option value="out">Money paid</option></select></label>
-              <label>Amount<input v-model="paymentForm.amount" type="number" min="0.01" step="0.01" required /></label>
-              <label>Apply to invoice <span>(optional)</span><select v-model="paymentForm.invoice_id" @change="selectInvoiceAllocation"><option value="">Do not allocate</option><option v-for="invoice in allocatableInvoices" :key="invoice.id" :value="String(invoice.id)">{{ invoice.invoice_number }} · {{ invoice.counterparty.name }} · due {{ formatMoney(invoice.outstanding_amount) }}</option></select></label>
-              <label v-if="!paymentForm.invoice_id && !paymentForm.journal_entry_id">What the money is for <span>(account, if not for an invoice)</span><select v-model="paymentForm.offset_account_id"><option value="">Choose account</option><option v-for="account in accounts.filter((item) => item.is_active)" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
-              <label v-if="paymentForm.invoice_id">Allocated amount<input v-model="paymentForm.allocation_amount" type="number" min="0.01" step="0.01" :max="Math.min(Number(paymentForm.amount) || 0, Number(invoices.find((item) => item.id === Number(paymentForm.invoice_id))?.outstanding_amount || 0))" required /></label>
-              <label>Payment date<input v-model="paymentForm.paid_on" type="date" required /></label>
-              <label>Journal entry<select v-model="paymentForm.journal_entry_id"><option value="">Post journal automatically</option><option v-for="entry in availablePaymentJournalEntries" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}{{ entry.reference ? ` · ${entry.reference}` : '' }}</option></select></label>
-              <label>Reference <span>(optional)</span><input v-model.trim="paymentForm.reference" maxlength="120" /></label>
-              <label>Note <span>(optional)</span><input v-model.trim="paymentForm.notes" maxlength="5000" /></label>
+              <label>{{ tr('Account type') }}<select v-model="paymentForm.source"><option value="cash">{{ tr('Cash') }}</option><option value="bank">{{ tr('Bank') }}</option></select></label>
+              <label v-if="paymentForm.source === 'cash'">{{ tr('Cash account') }}<select v-model="paymentForm.cash_account_id" required><option disabled value="">{{ tr('Choose cash account') }}</option><option v-for="account in cashAccounts.filter((item) => item.account)" :key="account.id" :value="String(account.id)">{{ account.name }} · {{ account.account?.code }}</option></select></label>
+              <label v-else>{{ tr('Bank account') }}<select v-model="paymentForm.bank_account_id" required><option disabled value="">{{ tr('Choose bank account') }}</option><option v-for="account in bankAccounts.filter((item) => item.account)" :key="account.id" :value="String(account.id)">{{ account.bank_name }} · {{ account.account?.code }}</option></select></label>
+              <label>{{ tr('Direction') }}<select v-model="paymentForm.direction"><option value="in">{{ tr('Money received') }}</option><option value="out">{{ tr('Money paid') }}</option></select></label>
+              <label>{{ tr('Amount') }}<input v-model="paymentForm.amount" type="number" min="0.01" step="0.01" required /></label>
+              <label>{{ tr('Apply to invoice') }} <span>{{ tr('(optional)') }}</span><select v-model="paymentForm.invoice_id" @change="selectInvoiceAllocation"><option value="">{{ tr('Do not allocate') }}</option><option v-for="invoice in allocatableInvoices" :key="invoice.id" :value="String(invoice.id)">{{ invoice.invoice_number }} · {{ invoice.counterparty.name }} {{ tr('· due') }} {{ formatMoney(invoice.outstanding_amount) }}</option></select></label>
+              <label v-if="!paymentForm.invoice_id && !paymentForm.journal_entry_id">{{ tr('What the money is for') }} <span>{{ tr('(account, if not for an invoice)') }}</span><select v-model="paymentForm.offset_account_id"><option value="">{{ tr('Choose account') }}</option><option v-for="account in accounts.filter((item) => item.is_active)" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
+              <label v-if="paymentForm.invoice_id">{{ tr('Allocated amount') }}<input v-model="paymentForm.allocation_amount" type="number" min="0.01" step="0.01" :max="Math.min(Number(paymentForm.amount) || 0, Number(invoices.find((item) => item.id === Number(paymentForm.invoice_id))?.outstanding_amount || 0))" required /></label>
+              <label>{{ tr('Payment date') }}<input v-model="paymentForm.paid_on" type="date" required /></label>
+              <label>{{ tr('Journal entry') }}<select v-model="paymentForm.journal_entry_id"><option value="">{{ tr('Post journal automatically') }}</option><option v-for="entry in availablePaymentJournalEntries" :key="entry.id" :value="String(entry.id)">{{ formatDate(entry.entry_date) }} · {{ entry.description }}{{ entry.reference ? ` · ${entry.reference}` : '' }}</option></select></label>
+              <label>{{ tr('Reference') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="paymentForm.reference" maxlength="120" /></label>
+              <label>{{ tr('Note') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="paymentForm.notes" maxlength="5000" /></label>
             </div>
             <div class="payment-source-document">
-              <label>Existing source document<select v-model="paymentForm.document_id" @change="selectPaymentSourceDocument"><option value="">Upload a new receipt below</option><option v-for="document in documents" :key="document.id" :value="String(document.id)">{{ document.category }} · {{ document.original_name }}</option></select></label>
-              <label>Or upload source document<input ref="paymentSourceFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" @change="selectPaymentSourceFile" /></label>
-              <p class="form-note">Attach a receipt, invoice, or other evidence for this movement. The uploaded file is saved to this business before the payment is recorded.</p>
+              <label>{{ tr('Existing source document') }}<select v-model="paymentForm.document_id" @change="selectPaymentSourceDocument"><option value="">{{ tr('Upload a new receipt below') }}</option><option v-for="document in documents" :key="document.id" :value="String(document.id)">{{ trValue(document.category) }} · {{ document.original_name }}</option></select></label>
+              <label>{{ tr('Or upload source document') }}<input ref="paymentSourceFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" @change="selectPaymentSourceFile" /></label>
+              <p class="form-note">{{ tr('Attach a receipt, invoice, or other evidence for this movement. The uploaded file is saved to this business before the payment is recorded.') }}</p>
             </div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || (!paymentForm.document_id && !paymentSourceFile)">{{ saving ? 'Saving…' : 'Save payment' }}</button></div>
-            <p v-if="!paymentForm.journal_entry_id" class="setup-hint">Automatic posting needs either the whole amount applied to an invoice, or the account the money is for (for example an expense account for a cash purchase).</p>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || (!paymentForm.document_id && !paymentSourceFile)">{{ saving ? tr('Saving…') : tr('Save payment') }}</button></div>
+            <p v-if="!paymentForm.journal_entry_id" class="setup-hint">{{ tr('Automatic posting needs either the whole amount applied to an invoice, or the account the money is for (for example an expense account for a cash purchase).') }}</p>
           </form>
           <div class="journal-list"><article v-for="payment in payments" :key="payment.id" class="journal-card">
-            <div class="journal-card-heading"><div><strong>{{ payment.direction === 'in' ? 'Money received' : 'Money paid' }}<template v-if="payment.reference"> · {{ payment.reference }}</template></strong><span>{{ formatDate(payment.paid_on) }} · {{ payment.cash_account?.name || payment.bank_account?.bank_name }} · Journal #{{ payment.journal_entry.id }}</span></div><strong class="invoice-total">{{ formatMoney(payment.amount) }}</strong></div>
-            <p v-if="payment.invoices.length" class="payment-note">Applied to {{ payment.invoices.map((invoice) => `${invoice.invoice_number} (${formatMoney(invoice.allocated_amount)})`).join(', ') }}</p>
-            <p v-if="payment.document" class="payment-note">Source: {{ payment.document.original_name }}</p>
+            <div class="journal-card-heading"><div><strong>{{ payment.direction === 'in' ? tr('Money received') : tr('Money paid') }}<template v-if="payment.reference"> · {{ payment.reference }}</template></strong><span>{{ formatDate(payment.paid_on) }} · {{ payment.cash_account?.name || payment.bank_account?.bank_name }} {{ tr('· Journal #') }}{{ payment.journal_entry.id }}</span></div><strong class="invoice-total">{{ formatMoney(payment.amount) }}</strong></div>
+            <p v-if="payment.invoices.length" class="payment-note">{{ tr('Applied to') }} {{ payment.invoices.map((invoice) => `${invoice.invoice_number} (${formatMoney(invoice.allocated_amount)})`).join(', ') }}</p>
+            <p v-if="payment.document" class="payment-note">{{ tr('Source:') }} {{ payment.document.original_name }}</p>
             <p v-if="payment.notes" class="payment-note">{{ payment.notes }}</p>
-          </article><p v-if="!payments.length" class="empty-message">No cash or bank movements recorded yet.</p></div>
+          </article><p v-if="!payments.length" class="empty-message">{{ tr('No cash or bank movements recorded yet.') }}</p></div>
         </template>
       </section>
 
@@ -2725,99 +2726,99 @@ function getApiError(error: unknown, fallback: string): string {
 
       <section v-else-if="activeSection === 'ledger'" class="content-panel">
         <div class="panel-heading">
-          <div><p class="eyebrow">Double-entry bookkeeping</p><h2>Ledger</h2></div>
+          <div><p class="eyebrow">{{ tr('Double-entry bookkeeping') }}</p><h2>{{ tr('Ledger') }}</h2></div>
           <span class="ledger-currency">{{ business.currency }}</span>
         </div>
-        <nav class="kind-tabs ledger-tabs" aria-label="Ledger setup">
-          <button :class="{ active: activeLedgerSection === 'journal' }" @click="activeLedgerSection = 'journal'">Journal</button>
-          <button :class="{ active: activeLedgerSection === 'accounts' }" @click="activeLedgerSection = 'accounts'">Accounts</button>
-          <button :class="{ active: activeLedgerSection === 'posting' }" @click="activeLedgerSection = 'posting'">Posting accounts</button>
-          <button :class="{ active: activeLedgerSection === 'periods' }" @click="activeLedgerSection = 'periods'">Periods</button>
+        <nav class="kind-tabs ledger-tabs" :aria-label="tr('Ledger setup')">
+          <button :class="{ active: activeLedgerSection === 'journal' }" @click="activeLedgerSection = 'journal'">{{ tr('Journal') }}</button>
+          <button :class="{ active: activeLedgerSection === 'accounts' }" @click="activeLedgerSection = 'accounts'">{{ tr('Accounts') }}</button>
+          <button :class="{ active: activeLedgerSection === 'posting' }" @click="activeLedgerSection = 'posting'">{{ tr('Posting accounts') }}</button>
+          <button :class="{ active: activeLedgerSection === 'periods' }" @click="activeLedgerSection = 'periods'">{{ tr('Periods') }}</button>
         </nav>
         <p v-if="formError" class="error-text ledger-error" role="alert">{{ formError }}</p>
 
         <template v-if="activeLedgerSection === 'journal'">
           <div class="ledger-actions">
-            <p class="form-note">Only balanced entries dated inside an open period can be posted.</p>
-            <button class="primary-button" :disabled="!accounts.length || !openPeriods.length" @click="showJournalForm = !showJournalForm">{{ showJournalForm ? 'Cancel' : 'New journal entry' }}</button>
+            <p class="form-note">{{ tr('Only balanced entries dated inside an open period can be posted.') }}</p>
+            <button class="primary-button" :disabled="!accounts.length || !openPeriods.length" @click="showJournalForm = !showJournalForm">{{ showJournalForm ? tr('Cancel') : tr('New journal entry') }}</button>
           </div>
-          <p v-if="!accounts.length || !openPeriods.length" class="setup-hint">Set up accounts and an open period before entering journals.</p>
+          <p v-if="!accounts.length || !openPeriods.length" class="setup-hint">{{ tr('Set up accounts and an open period before entering journals.') }}</p>
           <form v-if="showJournalForm" class="entry-form" @submit.prevent="createJournalDraft">
-            <h3>Journal entry draft</h3>
+            <h3>{{ tr('Journal entry draft') }}</h3>
             <div class="fields-grid journal-fields">
-              <label>Description<input v-model.trim="journalForm.description" required maxlength="255" /></label>
-              <label>Accounting period<select v-model="journalForm.accounting_period_id" required><option disabled value="">Choose a period</option><option v-for="period in openPeriods" :key="period.id" :value="String(period.id)">{{ period.name }} · {{ formatDate(period.starts_on) }} – {{ formatDate(period.ends_on) }}</option></select></label>
-              <label>Entry date<input v-model="journalForm.entry_date" type="date" required /></label>
-              <label>Reference <span>(optional)</span><input v-model.trim="journalForm.reference" maxlength="100" /></label>
-              <label v-if="activeUnits.length">Unit <span>(optional)</span><select v-model="journalForm.business_unit_id"><option value="">No unit</option><option v-for="unit in activeUnits" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
+              <label>{{ tr('Description') }}<input v-model.trim="journalForm.description" required maxlength="255" /></label>
+              <label>{{ tr('Accounting period') }}<select v-model="journalForm.accounting_period_id" required><option disabled value="">{{ tr('Choose a period') }}</option><option v-for="period in openPeriods" :key="period.id" :value="String(period.id)">{{ period.name }} · {{ formatDate(period.starts_on) }} – {{ formatDate(period.ends_on) }}</option></select></label>
+              <label>{{ tr('Entry date') }}<input v-model="journalForm.entry_date" type="date" required /></label>
+              <label>{{ tr('Reference') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="journalForm.reference" maxlength="100" /></label>
+              <label v-if="activeUnits.length">{{ tr('Unit') }} <span>{{ tr('(optional)') }}</span><select v-model="journalForm.business_unit_id"><option value="">{{ tr('No unit') }}</option><option v-for="unit in activeUnits" :key="unit.id" :value="String(unit.id)">{{ unit.name }}</option></select></label>
             </div>
-            <div class="lines-heading"><h4>Debit and credit lines</h4><button class="text-button" type="button" @click="addJournalLine">＋ Add line</button></div>
+            <div class="lines-heading"><h4>{{ tr('Debit and credit lines') }}</h4><button class="text-button" type="button" @click="addJournalLine">{{ tr('＋ Add line') }}</button></div>
             <div v-for="(line, index) in journalLineDrafts" :key="index" class="journal-line-row">
-              <label>Account<select v-model="line.account_id" required><option disabled value="">Choose account</option><option v-for="account in accounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
-              <label>Debit<input :value="line.debit" type="number" min="0" step="0.01" required @input="setJournalSide(index, 'debit', ($event.target as HTMLInputElement).value)" /></label>
-              <label>Credit<input :value="line.credit" type="number" min="0" step="0.01" required @input="setJournalSide(index, 'credit', ($event.target as HTMLInputElement).value)" /></label>
-              <label>Line note<input v-model.trim="line.description" maxlength="255" /></label>
-              <button v-if="journalLineDrafts.length > 2" class="remove-line" type="button" aria-label="Remove line" @click="journalLineDrafts.splice(index, 1)">×</button>
+              <label>{{ tr('Account') }}<select v-model="line.account_id" required><option disabled value="">{{ tr('Choose account') }}</option><option v-for="account in accounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
+              <label>{{ tr('Debit') }}<input :value="line.debit" type="number" min="0" step="0.01" required @input="setJournalSide(index, 'debit', ($event.target as HTMLInputElement).value)" /></label>
+              <label>{{ tr('Credit') }}<input :value="line.credit" type="number" min="0" step="0.01" required @input="setJournalSide(index, 'credit', ($event.target as HTMLInputElement).value)" /></label>
+              <label>{{ tr('Line note') }}<input v-model.trim="line.description" maxlength="255" /></label>
+              <button v-if="journalLineDrafts.length > 2" class="remove-line" type="button" :aria-label="tr('Remove line')" @click="journalLineDrafts.splice(index, 1)">×</button>
             </div>
-            <div class="totals-preview"><span>Debits {{ formatMoney(journalDebitTotal) }}</span><span>Credits {{ formatMoney(journalCreditTotal) }}</span><strong :class="{ unbalanced: !journalIsBalanced }">{{ journalIsBalanced ? 'Balanced' : 'Out of balance' }}</strong></div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || !journalIsBalanced || !journalLinesValid">{{ saving ? 'Saving…' : 'Save draft' }}</button></div>
+            <div class="totals-preview"><span>{{ tr('Debits') }} {{ formatMoney(journalDebitTotal) }}</span><span>{{ tr('Credits') }} {{ formatMoney(journalCreditTotal) }}</span><strong :class="{ unbalanced: !journalIsBalanced }">{{ journalIsBalanced ? tr('Balanced') : tr('Out of balance') }}</strong></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || !journalIsBalanced || !journalLinesValid">{{ saving ? tr('Saving…') : tr('Save draft') }}</button></div>
           </form>
           <div class="journal-list">
             <article v-for="entry in journalEntries" :key="entry.id" class="journal-card">
-              <div class="journal-card-heading"><div><strong>{{ entry.description }}</strong><span>{{ formatDate(entry.entry_date) }} · {{ entry.accounting_period.name }}<template v-if="entry.reference"> · {{ entry.reference }}</template></span></div><span class="status-chip" :class="{ posted: entry.status === 'posted' }">{{ entry.status }}</span></div>
+              <div class="journal-card-heading"><div><strong>{{ entry.description }}</strong><span>{{ formatDate(entry.entry_date) }} · {{ entry.accounting_period.name }}<template v-if="entry.reference"> · {{ entry.reference }}</template></span></div><span class="status-chip" :class="{ posted: entry.status === 'posted' }">{{ trValue(entry.status) }}</span></div>
               <div class="journal-lines-summary">
                 <div v-for="line in entry.lines" :key="line.id"><span>{{ line.account.code }} · {{ line.account.name }}</span><strong v-if="Number(line.debit) > 0">{{ formatMoney(line.debit) }}</strong><strong v-else>{{ formatMoney(line.credit) }}</strong></div>
               </div>
               <div v-if="entry.status === 'draft'" class="journal-card-actions">
-                <button class="text-button" type="button" :disabled="saving" @click="removeJournalDraft(entry)">Remove draft</button>
-                <button class="primary-button" type="button" :disabled="saving" @click="postJournal(entry)">Post entry</button>
+                <button class="text-button" type="button" :disabled="saving" @click="removeJournalDraft(entry)">{{ tr('Remove draft') }}</button>
+                <button class="primary-button" type="button" :disabled="saving" @click="postJournal(entry)">{{ tr('Post entry') }}</button>
               </div>
-              <div v-else-if="entry.reversal_of_id === null && !journalEntries.some((item) => item.reversal_of_id === entry.id)" class="journal-card-actions"><button class="text-button" type="button" :disabled="saving" @click="reverseJournal(entry)">Create reversal draft</button></div>
+              <div v-else-if="entry.reversal_of_id === null && !journalEntries.some((item) => item.reversal_of_id === entry.id)" class="journal-card-actions"><button class="text-button" type="button" :disabled="saving" @click="reverseJournal(entry)">{{ tr('Create reversal draft') }}</button></div>
             </article>
-            <p v-if="!journalEntries.length" class="empty-message">No journal entries yet.</p>
+            <p v-if="!journalEntries.length" class="empty-message">{{ tr('No journal entries yet.') }}</p>
           </div>
         </template>
 
         <template v-else-if="activeLedgerSection === 'accounts'">
-          <div class="ledger-actions"><p class="form-note">Create the chart of accounts approved for this business, or start from the Kosovo standard chart. Existing accounts are never changed.</p><div class="ledger-buttons"><button class="text-button" type="button" :disabled="saving" @click="applyKosovoChartTemplate">Use Kosovo standard chart</button><button class="primary-button" @click="showAccountForm = !showAccountForm">{{ showAccountForm ? 'Cancel' : 'Add account' }}</button></div></div>
+          <div class="ledger-actions"><p class="form-note">{{ tr('Create the chart of accounts approved for this business, or start from the Kosovo standard chart. Existing accounts are never changed.') }}</p><div class="ledger-buttons"><button class="text-button" type="button" :disabled="saving" @click="applyKosovoChartTemplate">{{ tr('Use Kosovo standard chart') }}</button><button class="primary-button" @click="showAccountForm = !showAccountForm">{{ showAccountForm ? tr('Cancel') : tr('Add account') }}</button></div></div>
           <p v-if="chartTemplateNotice" class="setup-hint" role="status">{{ chartTemplateNotice }}</p>
           <form v-if="showAccountForm" class="entry-form" @submit.prevent="createAccount">
-            <h3>New account</h3>
+            <h3>{{ tr('New account') }}</h3>
             <div class="fields-grid">
-              <label>Account code<input v-model.trim="accountForm.code" required maxlength="32" /></label>
-              <label>Account name<input v-model.trim="accountForm.name" required maxlength="255" /></label>
-              <label>Type<select v-model="accountForm.account_type"><option value="asset">Asset</option><option value="liability">Liability</option><option value="equity">Equity</option><option value="revenue">Revenue</option><option value="expense">Expense</option></select></label>
-              <label>Normal balance<select v-model="accountForm.normal_balance"><option value="debit">Debit</option><option value="credit">Credit</option></select></label>
-              <label>Parent account <span>(optional)</span><select v-model="accountForm.parent_id"><option value="">None</option><option v-for="account in accounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
+              <label>{{ tr('Account code') }}<input v-model.trim="accountForm.code" required maxlength="32" /></label>
+              <label>{{ tr('Account name') }}<input v-model.trim="accountForm.name" required maxlength="255" /></label>
+              <label>{{ tr('Type') }}<select v-model="accountForm.account_type"><option value="asset">{{ tr('Asset') }}</option><option value="liability">{{ tr('Liability') }}</option><option value="equity">{{ tr('Equity') }}</option><option value="revenue">{{ tr('Revenue') }}</option><option value="expense">{{ tr('Expense') }}</option></select></label>
+              <label>{{ tr('Normal balance') }}<select v-model="accountForm.normal_balance"><option value="debit">{{ tr('Debit') }}</option><option value="credit">{{ tr('Credit') }}</option></select></label>
+              <label>{{ tr('Parent account') }} <span>{{ tr('(optional)') }}</span><select v-model="accountForm.parent_id"><option value="">{{ tr('None') }}</option><option v-for="account in accounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
             </div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save account' }}</button></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save account') }}</button></div>
           </form>
-          <div class="account-list"><article v-for="account in accounts" :key="account.id" class="account-row"><strong>{{ account.code }}</strong><span>{{ account.name }}</span><span class="account-type">{{ account.account_type }} · {{ account.normal_balance }}</span></article><p v-if="!accounts.length" class="empty-message">No accounts set up yet.</p></div>
+          <div class="account-list"><article v-for="account in accounts" :key="account.id" class="account-row"><strong>{{ account.code }}</strong><span>{{ account.name }}</span><span class="account-type">{{ trValue(account.account_type) }} · {{ trValue(account.normal_balance) }}</span></article><p v-if="!accounts.length" class="empty-message">{{ tr('No accounts set up yet.') }}</p></div>
         </template>
 
         <template v-else-if="activeLedgerSection === 'posting'">
-          <div class="ledger-actions"><p class="form-note">Issuing an invoice without choosing a journal entry posts it to these accounts. VAT accounts are only needed for invoices with VAT.</p></div>
+          <div class="ledger-actions"><p class="form-note">{{ tr('Issuing an invoice without choosing a journal entry posts it to these accounts. VAT accounts are only needed for invoices with VAT.') }}</p></div>
           <form class="entry-form" @submit.prevent="savePostingAccounts">
-            <h3>Automatic posting accounts</h3>
+            <h3>{{ tr('Automatic posting accounts') }}</h3>
             <div class="fields-grid">
-              <label v-for="row in postingAccounts" :key="row.purpose">{{ row.label }}<select v-model="postingAccountForm[row.purpose]"><option value="">Not mapped</option><option v-for="account in accountsForPostingPurpose(row)" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
+              <label v-for="row in postingAccounts" :key="row.purpose">{{ row.label }}<select v-model="postingAccountForm[row.purpose]"><option value="">{{ tr('Not mapped') }}</option><option v-for="account in accountsForPostingPurpose(row)" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select></label>
             </div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || !canEditBookkeeping">{{ saving ? 'Saving…' : 'Save posting accounts' }}</button></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving || !canEditBookkeeping">{{ saving ? tr('Saving…') : tr('Save posting accounts') }}</button></div>
           </form>
         </template>
 
         <template v-else>
-          <div class="ledger-actions"><p class="form-note">Periods cannot overlap. Closed periods are protected from new journal entries; reopening one needs the business owner's approval.</p><button class="primary-button" @click="showPeriodForm = !showPeriodForm">{{ showPeriodForm ? 'Cancel' : 'Add period' }}</button></div>
+          <div class="ledger-actions"><p class="form-note">{{ tr('Periods cannot overlap. Closed periods are protected from new journal entries; reopening one needs the business owner\'s approval.') }}</p><button class="primary-button" @click="showPeriodForm = !showPeriodForm">{{ showPeriodForm ? tr('Cancel') : tr('Add period') }}</button></div>
           <form v-if="showPeriodForm" class="entry-form" @submit.prevent="createPeriod">
-            <h3>New accounting period</h3>
-            <div class="fields-grid"><label>Period name<input v-model.trim="periodForm.name" required maxlength="80" /></label><label>Starts on<input v-model="periodForm.starts_on" type="date" required /></label><label>Ends on<input v-model="periodForm.ends_on" type="date" required /></label></div>
-            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save period' }}</button></div>
+            <h3>{{ tr('New accounting period') }}</h3>
+            <div class="fields-grid"><label>{{ tr('Period name') }}<input v-model.trim="periodForm.name" required maxlength="80" /></label><label>{{ tr('Starts on') }}<input v-model="periodForm.starts_on" type="date" required /></label><label>{{ tr('Ends on') }}<input v-model="periodForm.ends_on" type="date" required /></label></div>
+            <div class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? tr('Saving…') : tr('Save period') }}</button></div>
           </form>
-          <div class="period-list"><article v-for="period in periods" :key="period.id" class="period-row"><div><strong>{{ period.name }}</strong><span>{{ formatDate(period.starts_on) }} – {{ formatDate(period.ends_on) }}</span></div><span class="status-chip" :class="{ posted: period.status === 'closed' }">{{ period.status }}</span><button v-if="period.status === 'open'" class="text-button" type="button" :disabled="saving || closingReviewLoading" @click="reviewPeriodClosing(period)">{{ closingReviewLoading && closingReview?.period_id === period.id ? 'Checking…' : 'Review close' }}</button><PeriodReopenPanel :business-id="businessId" :period="period" :role="business.role ?? ''" @changed="reloadPeriods" /></article><p v-if="!periods.length" class="empty-message">No accounting periods yet.</p></div>
+          <div class="period-list"><article v-for="period in periods" :key="period.id" class="period-row"><div><strong>{{ period.name }}</strong><span>{{ formatDate(period.starts_on) }} – {{ formatDate(period.ends_on) }}</span></div><span class="status-chip" :class="{ posted: period.status === 'closed' }">{{ trValue(period.status) }}</span><button v-if="period.status === 'open'" class="text-button" type="button" :disabled="saving || closingReviewLoading" @click="reviewPeriodClosing(period)">{{ closingReviewLoading && closingReview?.period_id === period.id ? tr('Checking…') : tr('Review close') }}</button><PeriodReopenPanel :business-id="businessId" :period="period" :role="business.role ?? ''" @changed="reloadPeriods" /></article><p v-if="!periods.length" class="empty-message">{{ tr('No accounting periods yet.') }}</p></div>
           <section v-if="closingReview" class="close-review" aria-live="polite">
-            <div class="close-review-heading"><div><p class="eyebrow">Month-end review</p><h3>{{ closingReview.name }}</h3></div><button class="text-button" type="button" @click="closingReview = null">Dismiss</button></div>
-            <ul class="closing-check-list"><li v-for="check in closingReview.checks" :key="check.key"><span class="closing-check-status" :class="check.status">{{ check.status.replace('_', ' ') }}</span><div><strong>{{ check.label }}</strong><p>{{ check.detail }}</p></div></li></ul>
-            <div class="form-footer"><button class="primary-button" type="button" :disabled="saving || !closingReview.can_close" @click="closeReviewedPeriod">{{ saving ? 'Closing…' : closingReview.can_close ? 'Confirm and close period' : 'Resolve blockers before closing' }}</button></div>
+            <div class="close-review-heading"><div><p class="eyebrow">{{ tr('Month-end review') }}</p><h3>{{ closingReview.name }}</h3></div><button class="text-button" type="button" @click="closingReview = null">{{ tr('Dismiss') }}</button></div>
+            <ul class="closing-check-list"><li v-for="check in closingReview.checks" :key="check.key"><span class="closing-check-status" :class="check.status">{{ trValue(check.status) }}</span><div><strong>{{ check.label }}</strong><p>{{ check.detail }}</p></div></li></ul>
+            <div class="form-footer"><button class="primary-button" type="button" :disabled="saving || !closingReview.can_close" @click="closeReviewedPeriod">{{ saving ? tr('Closing…') : closingReview.can_close ? tr('Confirm and close period') : tr('Resolve blockers before closing') }}</button></div>
           </section>
           <YearEndClosePanel :business-id="businessId" :currency="business.currency" :can-edit="canEditBookkeeping" @closed="refreshJournalEntries" />
         </template>
