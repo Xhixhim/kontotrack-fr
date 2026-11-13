@@ -16,6 +16,7 @@ import DocumentsPanel from '@/components/workspace/DocumentsPanel.vue'
 import FixedAssetsPanel from '@/components/workspace/FixedAssetsPanel.vue'
 import LedgerReportsPanel from '@/components/workspace/LedgerReportsPanel.vue'
 import OperationalReportsPanel from '@/components/workspace/OperationalReportsPanel.vue'
+import ApiKeysPanel from '@/components/workspace/ApiKeysPanel.vue'
 import AssistantPanel from '@/components/workspace/AssistantPanel.vue'
 import AtkFilingsPanel from '@/components/workspace/AtkFilingsPanel.vue'
 import BankLineCategorizer, { type BankCategory } from '@/components/workspace/BankLineCategorizer.vue'
@@ -2423,6 +2424,7 @@ function getApiError(error: unknown, fallback: string): string {
           <div v-if="canEditBookkeeping" class="form-footer"><button class="primary-button" type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save details' }}</button></div>
         </form>
         <BusinessUnitsPanel v-model:units="units" :business-id="businessId" :can-edit="canEditBookkeeping" />
+        <ApiKeysPanel v-if="business.role === 'owner'" :business-id="businessId" />
         <section v-if="canViewHistory" class="history-panel">
           <h3>Change history</h3>
           <ul class="audit-list">
