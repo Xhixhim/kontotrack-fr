@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr, trf, trValue } from '@/lib/tr'
 import { onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -87,7 +88,7 @@ onMounted(async () => {
     const response = await api.get<BusinessResponse>('/api/v1/businesses')
     businesses.value = response.data.data
   } catch {
-    businessError.value = 'We could not load your businesses. Please refresh the page.'
+    businessError.value = tr('We could not load your businesses. Please refresh the page.')
   } finally {
     loadingBusinesses.value = false
   }
@@ -96,7 +97,7 @@ onMounted(async () => {
     const response = await api.get<{ data: BusinessInvitation[] }>('/api/v1/me/business-invitations')
     invitations.value = response.data.data
   } catch {
-    invitationError.value = 'We could not load your business invitations.'
+    invitationError.value = tr('We could not load your business invitations.')
   }
 })
 
@@ -117,9 +118,9 @@ async function createBusiness(): Promise<void> {
   } catch (error: unknown) {
     if (typeof error === 'object' && error !== null && 'response' in error) {
       const response = error.response as { data?: { message?: string; errors?: Record<string, string[]> } }
-      formError.value = Object.values(response.data?.errors ?? {})[0]?.[0] ?? response.data?.message ?? 'We could not save this business.'
+      formError.value = Object.values(response.data?.errors ?? {})[0]?.[0] ?? response.data?.message ?? tr('We could not save this business.')
     } else {
-      formError.value = 'We could not save this business. Please try again.'
+      formError.value = tr('We could not save this business. Please try again.')
     }
   } finally {
     savingBusiness.value = false
@@ -135,7 +136,7 @@ async function acceptInvitation(invitation: BusinessInvitation): Promise<void> {
     const response = await api.get<BusinessResponse>('/api/v1/businesses')
     businesses.value = response.data.data
   } catch {
-    invitationError.value = 'This invitation could not be accepted. Refresh and try again.'
+    invitationError.value = tr('This invitation could not be accepted. Refresh and try again.')
   } finally {
     acceptingInvitationId.value = null
   }
@@ -159,9 +160,9 @@ async function uploadBill(event: Event, business: Business): Promise<void> {
     const response = await api.post<{ data: BusinessDocument }>(`/api/v1/businesses/${business.id}/documents`, payload)
     businessDocuments.value[business.id] = [response.data.data, ...(businessDocuments.value[business.id] ?? [])]
     documentsExpanded.value[business.id] = true
-    uploadMessages.value[business.id] = 'Bill uploaded.'
+    uploadMessages.value[business.id] = tr('Bill uploaded.')
   } catch {
-    uploadMessages.value[business.id] = 'Upload failed. Please try again.'
+    uploadMessages.value[business.id] = tr('Upload failed. Please try again.')
   } finally {
     uploadingBusinessId.value = null
     input.value = ''
@@ -187,7 +188,7 @@ async function toggleDocuments(business: Business): Promise<void> {
     const response = await api.get<{ data: BusinessDocument[] }>(`/api/v1/businesses/${business.id}/documents`)
     businessDocuments.value[business.id] = response.data.data
   } catch {
-    documentsError.value[business.id] = 'We could not load these files.'
+    documentsError.value[business.id] = tr('We could not load these files.')
   } finally {
     documentsLoading.value[business.id] = false
   }
@@ -207,7 +208,7 @@ async function openChat(business: Business): Promise<void> {
     chatMembers.value = response.data.data.filter((member) => member.id !== auth.user?.id)
     chatMemberId.value = chatMembers.value[0]?.id ?? null
   } catch {
-    chatError.value = 'We could not load the business members.'
+    chatError.value = tr('We could not load the business members.')
   } finally {
     chatLoading.value = false
   }
@@ -227,7 +228,7 @@ async function loadConversation(): Promise<void> {
     const response = await api.get<{ data: ChatMessage[] }>(`/api/v1/businesses/${chatBusiness.value.id}/conversations/${chatConversationId.value}/messages`)
     chatMessages.value = response.data.data.slice().reverse()
   } catch {
-    chatError.value = 'We could not open this private chat.'
+    chatError.value = tr('We could not open this private chat.')
   } finally {
     chatLoading.value = false
   }
@@ -245,7 +246,7 @@ async function sendMessage(): Promise<void> {
     chatMessages.value.push(response.data.data)
     chatBody.value = ''
   } catch {
-    chatError.value = 'Your message could not be sent.'
+    chatError.value = tr('Your message could not be sent.')
   } finally {
     chatLoading.value = false
   }
@@ -255,29 +256,29 @@ async function sendMessage(): Promise<void> {
 <template>
   <main class="dashboard-shell">
     <header class="topbar">
-      <a class="brand" href="/" aria-label="KontoTrack home"><span>K</span> KontoTrack</a>
-      <div class="topbar-actions"><NotificationBell /><button class="sign-out" type="button" @click="signOut">Sign out</button></div>
+      <a class="brand" href="/" :aria-label="tr('KontoTrack home')"><span>{{ tr('K') }}</span> {{ tr('KontoTrack') }}</a>
+      <div class="topbar-actions"><NotificationBell /><button class="sign-out" type="button" @click="signOut">{{ tr('Sign out') }}</button></div>
     </header>
 
     <section class="welcome-card">
       <div>
-        <p class="eyebrow">Bookkeeping workspace</p>
-        <h1>Hello, {{ auth.user?.name }}</h1>
+        <p class="eyebrow">{{ tr('Bookkeeping workspace') }}</p>
+        <h1>{{ tr('Hello,') }} {{ auth.user?.name }}</h1>
         <p class="email">{{ auth.user?.email }}</p>
       </div>
-      <div class="connection"><span></span> Connected to the KontoTrack API</div>
+      <div class="connection"><span></span> {{ tr('Connected to the KontoTrack API') }}</div>
       <div v-if="auth.user?.is_system_admin" class="admin-links">
-        <RouterLink class="compliance-link" :to="{ name: 'compliance-settings' }">Compliance rules</RouterLink>
-        <RouterLink class="compliance-link" :to="{ name: 'system-users' }">Users</RouterLink>
+        <RouterLink class="compliance-link" :to="{ name: 'compliance-settings' }">{{ tr('Compliance rules') }}</RouterLink>
+        <RouterLink class="compliance-link" :to="{ name: 'system-users' }">{{ tr('Users') }}</RouterLink>
       </div>
     </section>
 
     <section v-if="invitations.length || invitationError" class="invitation-section" aria-labelledby="invitation-heading">
-      <div class="section-heading"><div><p class="eyebrow">Team access</p><h2 id="invitation-heading">Business invitations</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">{{ tr('Team access') }}</p><h2 id="invitation-heading">{{ tr('Business invitations') }}</h2></div></div>
       <p v-if="invitationError" class="feedback error" role="alert">{{ invitationError }}</p>
       <article v-for="invitation in invitations" :key="invitation.id" class="invitation-card">
-        <div><strong>{{ invitation.trade_name || invitation.legal_name }}</strong><span>{{ invitation.legal_name }} · {{ invitation.role.replaceAll('_', ' ') }}</span></div>
-        <button class="primary-button" type="button" :disabled="acceptingInvitationId === invitation.id" @click="acceptInvitation(invitation)">{{ acceptingInvitationId === invitation.id ? 'Accepting…' : 'Accept invitation' }}</button>
+        <div><strong>{{ invitation.trade_name || invitation.legal_name }}</strong><span>{{ invitation.legal_name }} · {{ trValue(invitation.role) }}</span></div>
+        <button class="primary-button" type="button" :disabled="acceptingInvitationId === invitation.id" @click="acceptInvitation(invitation)">{{ acceptingInvitationId === invitation.id ? tr('Accepting…') : tr('Accept invitation') }}</button>
       </article>
     </section>
 
@@ -288,33 +289,33 @@ async function sendMessage(): Promise<void> {
     <section class="business-section" aria-labelledby="business-heading">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Your workspaces</p>
-          <h2 id="business-heading">Businesses</h2>
+          <p class="eyebrow">{{ tr('Your workspaces') }}</p>
+          <h2 id="business-heading">{{ tr('Businesses') }}</h2>
         </div>
-        <span class="business-count">{{ businesses.length }} {{ businesses.length === 1 ? 'business' : 'businesses' }}</span>
+        <span class="business-count">{{ businesses.length === 1 ? tr('1 business') : trf('{0} businesses', [businesses.length]) }}</span>
         <button class="primary-button" type="button" @click="showBusinessForm = !showBusinessForm">
-          {{ showBusinessForm ? 'Cancel' : 'Add business' }}
+          {{ showBusinessForm ? tr('Cancel') : tr('Add business') }}
         </button>
       </div>
 
       <form v-if="showBusinessForm" class="business-form" @submit.prevent="createBusiness">
         <div class="form-heading">
-          <h3>Business details</h3>
-          <p>Enter the registered details. You will be added as the owner.</p>
+          <h3>{{ tr('Business details') }}</h3>
+          <p>{{ tr('Enter the registered details. You will be added as the owner.') }}</p>
         </div>
         <p v-if="formError" class="form-error" role="alert">{{ formError }}</p>
         <div class="form-grid">
-          <label>Legal business name<input v-model.trim="form.legal_name" required maxlength="255" autocomplete="organization" /></label>
-          <label>NUI<input v-model.trim="form.nui" required inputmode="numeric" pattern="\d{9}" maxlength="9" title="9 digits, as on the business registration certificate" autocomplete="off" /></label>
-          <label>Trade name <span>(optional)</span><input v-model.trim="form.trade_name" maxlength="255" /></label>
-          <label>Municipality <span>(optional)</span><input v-model.trim="form.municipality" maxlength="100" autocomplete="address-level2" /></label>
-          <label>VAT status<select v-model="form.vat_status"><option value="unknown">Not set</option><option value="registered">VAT registered</option><option value="not_registered">Not VAT registered</option></select></label>
+          <label>{{ tr('Legal business name') }}<input v-model.trim="form.legal_name" required maxlength="255" autocomplete="organization" /></label>
+          <label>{{ tr('NUI') }}<input v-model.trim="form.nui" required inputmode="numeric" pattern="\d{9}" maxlength="9" :title="tr('9 digits, as on the business registration certificate')" autocomplete="off" /></label>
+          <label>{{ tr('Trade name') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="form.trade_name" maxlength="255" /></label>
+          <label>{{ tr('Municipality') }} <span>{{ tr('(optional)') }}</span><input v-model.trim="form.municipality" maxlength="100" autocomplete="address-level2" /></label>
+          <label>{{ tr('VAT status') }}<select v-model="form.vat_status"><option value="unknown">{{ tr('Not set') }}</option><option value="registered">{{ tr('VAT registered') }}</option><option value="not_registered">{{ tr('Not VAT registered') }}</option></select></label>
         </div>
-        <div class="form-actions"><button class="primary-button" type="submit" :disabled="savingBusiness">{{ savingBusiness ? 'Saving…' : 'Save business' }}</button></div>
+        <div class="form-actions"><button class="primary-button" type="submit" :disabled="savingBusiness">{{ savingBusiness ? tr('Saving…') : tr('Save business') }}</button></div>
       </form>
 
       <p v-if="businessError" class="feedback error" role="alert">{{ businessError }}</p>
-      <p v-else-if="loadingBusinesses" class="feedback">Loading your businesses…</p>
+      <p v-else-if="loadingBusinesses" class="feedback">{{ tr('Loading your businesses…') }}</p>
       <div v-else-if="businesses.length" class="business-grid">
         <article v-for="business in businesses" :key="business.id" class="business-card">
           <div class="business-initial" aria-hidden="true">{{ business.legal_name.charAt(0).toUpperCase() }}</div>
@@ -322,67 +323,67 @@ async function sendMessage(): Promise<void> {
             <h3>{{ business.trade_name || business.legal_name }}</h3>
             <p>{{ business.legal_name }}</p>
             <dl>
-              <div><dt>NUI</dt><dd>{{ business.nui }}</dd></div>
-              <div v-if="business.municipality"><dt>Municipality</dt><dd>{{ business.municipality }}</dd></div>
+              <div><dt>{{ tr('NUI') }}</dt><dd>{{ business.nui }}</dd></div>
+              <div v-if="business.municipality"><dt>{{ tr('Municipality') }}</dt><dd>{{ business.municipality }}</dd></div>
             </dl>
             <p v-if="uploadMessages[business.id]" class="upload-message" role="status">{{ uploadMessages[business.id] }}</p>
           </div>
           <div class="business-actions">
-            <span class="role-chip">{{ business.role || 'Member' }}</span>
-            <RouterLink class="chat-button" :to="{ name: 'business', params: { businessId: business.id } }">Open books</RouterLink>
-            <button class="chat-button" type="button" @click="openChat(business)">Private chat</button>
-            <button class="chat-button" type="button" @click="toggleDocuments(business)">{{ documentsExpanded[business.id] ? 'Hide files' : 'View files' }}</button>
+            <span class="role-chip">{{ business.role ? trValue(business.role) : tr('Member') }}</span>
+            <RouterLink class="chat-button" :to="{ name: 'business', params: { businessId: business.id } }">{{ tr('Open books') }}</RouterLink>
+            <button class="chat-button" type="button" @click="openChat(business)">{{ tr('Private chat') }}</button>
+            <button class="chat-button" type="button" @click="toggleDocuments(business)">{{ documentsExpanded[business.id] ? tr('Hide files') : tr('View files') }}</button>
             <label class="upload-button" :class="{ disabled: uploadingBusinessId === business.id }">
-              {{ uploadingBusinessId === business.id ? 'Uploading…' : 'Upload bill' }}
+              {{ uploadingBusinessId === business.id ? tr('Uploading…') : tr('Upload bill') }}
               <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" :disabled="uploadingBusinessId === business.id" @change="uploadBill($event, business)" />
             </label>
           </div>
           <div v-if="documentsExpanded[business.id]" class="document-list">
-            <p v-if="documentsLoading[business.id]" class="upload-message">Loading files…</p>
+            <p v-if="documentsLoading[business.id]" class="upload-message">{{ tr('Loading files…') }}</p>
             <p v-else-if="documentsError[business.id]" class="upload-message error">{{ documentsError[business.id] }}</p>
-            <p v-else-if="!businessDocuments[business.id]?.length" class="upload-message">No files uploaded yet.</p>
+            <p v-else-if="!businessDocuments[business.id]?.length" class="upload-message">{{ tr('No files uploaded yet.') }}</p>
             <a v-for="document in businessDocuments[business.id]" :key="document.id" class="document-link" :href="`${apiBaseUrl}/api/v1/businesses/${business.id}/documents/${document.id}/download`" target="_blank" rel="noreferrer">
-              <span>{{ document.original_name }}</span><small>{{ document.category.replaceAll('_', ' ') }}</small>
+              <span>{{ document.original_name }}</span><small>{{ trValue(document.category) }}</small>
             </a>
           </div>
         </article>
       </div>
       <div v-else class="empty-state">
         <div class="empty-icon" aria-hidden="true">＋</div>
-        <h3>No businesses yet</h3>
-        <p>Add your first business to set up its bookkeeping workspace.</p>
+        <h3>{{ tr('No businesses yet') }}</h3>
+        <p>{{ tr('Add your first business to set up its bookkeeping workspace.') }}</p>
       </div>
     </section>
 
     <div v-if="chatBusiness" class="chat-backdrop" @click.self="chatBusiness = null">
       <section class="chat-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-title">
         <header class="chat-header">
-          <div><p class="eyebrow">{{ chatBusiness.legal_name }}</p><h2 id="chat-title">Private chat</h2></div>
-          <button class="chat-close" type="button" aria-label="Close chat" @click="chatBusiness = null">×</button>
+          <div><p class="eyebrow">{{ chatBusiness.legal_name }}</p><h2 id="chat-title">{{ tr('Private chat') }}</h2></div>
+          <button class="chat-close" type="button" :aria-label="tr('Close chat')" @click="chatBusiness = null">×</button>
         </header>
         <p v-if="chatError" class="form-error" role="alert">{{ chatError }}</p>
-        <p v-if="chatLoading && !chatMembers.length" class="feedback">Loading members…</p>
+        <p v-if="chatLoading && !chatMembers.length" class="feedback">{{ tr('Loading members…') }}</p>
         <div v-else-if="!chatConversationId" class="chat-start">
-          <p v-if="!chatMembers.length">No owner or bookkeeper is available for this business chat yet.</p>
+          <p v-if="!chatMembers.length">{{ tr('No owner or bookkeeper is available for this business chat yet.') }}</p>
           <template v-else>
-            <label>Chat with
+            <label>{{ tr('Chat with') }}
               <select v-model.number="chatMemberId">
-                <option v-for="member in chatMembers" :key="member.id" :value="member.id">{{ member.name }} · {{ member.role.replaceAll('_', ' ') }}</option>
+                <option v-for="member in chatMembers" :key="member.id" :value="member.id">{{ member.name }} · {{ trValue(member.role) }}</option>
               </select>
             </label>
-            <button class="primary-button" type="button" :disabled="chatLoading || !chatMemberId" @click="loadConversation">{{ chatLoading ? 'Opening…' : 'Open conversation' }}</button>
+            <button class="primary-button" type="button" :disabled="chatLoading || !chatMemberId" @click="loadConversation">{{ chatLoading ? tr('Opening…') : tr('Open conversation') }}</button>
           </template>
         </div>
         <template v-else>
           <div class="message-list" aria-live="polite">
-            <p v-if="!chatMessages.length" class="chat-empty">Start the conversation with a message.</p>
+            <p v-if="!chatMessages.length" class="chat-empty">{{ tr('Start the conversation with a message.') }}</p>
             <article v-for="message in chatMessages" :key="message.id" class="chat-message" :class="{ mine: message.sender.id === auth.user?.id }">
               <strong>{{ message.sender.name }}</strong><p>{{ message.body }}</p>
             </article>
           </div>
           <form class="message-form" @submit.prevent="sendMessage">
-            <textarea v-model="chatBody" rows="2" maxlength="10000" placeholder="Write a message…" aria-label="Write a message" />
-            <button class="primary-button" type="submit" :disabled="chatLoading || !chatBody.trim()">Send</button>
+            <textarea v-model="chatBody" rows="2" maxlength="10000" :placeholder="tr('Write a message…')" :aria-label="tr('Write a message')" />
+            <button class="primary-button" type="submit" :disabled="chatLoading || !chatBody.trim()">{{ tr('Send') }}</button>
           </form>
         </template>
       </section>

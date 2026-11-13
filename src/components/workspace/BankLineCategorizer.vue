@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tr } from '@/lib/tr'
 import { computed, ref, watch } from 'vue'
 import api from '@/lib/api'
 import { getApiError } from '@/lib/format'
@@ -70,7 +71,7 @@ async function save(): Promise<void> {
     })
     emit('changed', response.data.data)
   } catch (caught: unknown) {
-    error.value = getApiError(caught, 'We could not save the category.')
+    error.value = getApiError(caught, tr('We could not save the category.'))
   } finally {
     saving.value = false
   }
@@ -83,7 +84,7 @@ async function book(): Promise<void> {
     const response = await api.post<{ data: unknown }>(`/api/v1/businesses/${props.businessId}/bank-accounts/${props.bankAccountId}/transactions/${props.line.id}/book`)
     emit('booked', response.data.data)
   } catch (caught: unknown) {
-    error.value = getApiError(caught, 'We could not book this bank line.')
+    error.value = getApiError(caught, tr('We could not book this bank line.'))
   } finally {
     booking.value = false
   }
@@ -93,27 +94,27 @@ async function book(): Promise<void> {
 <template>
   <div class="bank-categorizer">
     <div class="bank-categorizer-fields">
-      <label>What is it for?
+      <label>{{ tr('What is it for?') }}
         <select v-model="category" @change="accountId = ''; counterpartyId = ''">
-          <option value="">Not categorised</option>
+          <option value="">{{ tr('Not categorised') }}</option>
           <option v-for="item in availableCategories" :key="item.key" :value="item.key">{{ item.label }}</option>
         </select>
       </label>
-      <label v-if="selected?.needs === 'counterparty'">{{ partyType === 'customer' ? 'Customer' : 'Supplier' }}
-        <select v-model="counterpartyId" required><option value="">Choose…</option><option v-for="party in parties" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select>
+      <label v-if="selected?.needs === 'counterparty'">{{ partyType === 'customer' ? tr('Customer') : tr('Supplier') }}
+        <select v-model="counterpartyId" required><option value="">{{ tr('Choose…') }}</option><option v-for="party in parties" :key="party.id" :value="String(party.id)">{{ party.name }}</option></select>
       </label>
-      <label v-else-if="selected">Account
-        <select v-model="accountId" required><option value="">Choose…</option><option v-for="account in bookableAccounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select>
+      <label v-else-if="selected">{{ tr('Account') }}
+        <select v-model="accountId" required><option value="">{{ tr('Choose…') }}</option><option v-for="account in bookableAccounts" :key="account.id" :value="String(account.id)">{{ account.code }} · {{ account.name }}</option></select>
       </label>
     </div>
-    <label v-if="category" class="bank-categorizer-remember"><input v-model="remember" type="checkbox" /> Use for future lines containing <input v-model.trim="rememberAs" :disabled="!remember" maxlength="120" aria-label="Text to match" /></label>
+    <label v-if="category" class="bank-categorizer-remember"><input v-model="remember" type="checkbox" /> {{ tr('Use for future lines containing') }} <input v-model.trim="rememberAs" :disabled="!remember" maxlength="120" :aria-label="tr('Text to match')" /></label>
     <div class="bank-categorizer-actions">
-      <span v-if="line.category_is_suggestion && !isDirty" class="status-chip">Suggested, confirm to book</span>
-      <button class="text-button" type="button" :disabled="saving || (!isDirty && !line.category_is_suggestion && !remember)" @click="save">{{ saving ? 'Saving…' : line.category_is_suggestion && !isDirty ? 'Confirm category' : 'Save category' }}</button>
-      <button class="primary-button" type="button" :disabled="booking || !canBook" :title="canBook ? '' : 'Save a complete category first'" @click="book">{{ booking ? 'Booking…' : 'Book in the ledger' }}</button>
+      <span v-if="line.category_is_suggestion && !isDirty" class="status-chip">{{ tr('Suggested, confirm to book') }}</span>
+      <button class="text-button" type="button" :disabled="saving || (!isDirty && !line.category_is_suggestion && !remember)" @click="save">{{ saving ? tr('Saving…') : line.category_is_suggestion && !isDirty ? tr('Confirm category') : tr('Save category') }}</button>
+      <button class="primary-button" type="button" :disabled="booking || !canBook" :title="canBook ? '' : tr('Save a complete category first')" @click="book">{{ booking ? tr('Booking…') : tr('Book in the ledger') }}</button>
     </div>
-    <p v-if="selected?.needs === 'counterparty'" class="form-note">Booking pays this party's oldest open invoices first and reconciles the line.</p>
-    <p v-else-if="category === 'transfer'" class="form-note">Book a transfer once, from either account. On the other account's statement, reconcile the line with that entry instead of booking it again.</p>
+    <p v-if="selected?.needs === 'counterparty'" class="form-note">{{ tr('Booking pays this party\'s oldest open invoices first and reconciles the line.') }}</p>
+    <p v-else-if="category === 'transfer'" class="form-note">{{ tr('Book a transfer once, from either account. On the other account\'s statement, reconcile the line with that entry instead of booking it again.') }}</p>
     <p v-if="error" class="error-text" role="alert">{{ error }}</p>
   </div>
 </template>
